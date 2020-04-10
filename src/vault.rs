@@ -19,6 +19,7 @@ use crate::{
 use bincode;
 use crossbeam_channel::{Receiver, Select};
 use log::{error, info, trace, warn};
+use money_handler::AccountCmd::*;
 use rand::{CryptoRng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use safe_nd::{NodeFullId, Request, XorName};
@@ -39,7 +40,7 @@ enum State {
     Elder {
         client_handler: ClientHandler,
         data_handler: DataHandler,
-        coins_handler: CoinsHandler,
+        money_handler: MoneyHandler,
     },
     // TODO - remove this
     #[allow(unused)]
@@ -119,7 +120,12 @@ impl<R: CryptoRng + Rng> Vault<R> {
                 &total_used_space,
                 init_mode,
             )?;
-            let money_handler = MoneyHandler::new(id.public_id().clone(), root_dir, init_mode)?;
+            let money_handler = MoneyHandler::new(
+                id.public_id().clone().public_key(), // todo: this should be the section key (if possible?)
+                id.public_id().clone(),
+                root_dir,
+                init_mode,
+            )?;
             State::Elder {
                 client_handler,
                 data_handler,
@@ -433,6 +439,7 @@ impl<R: CryptoRng + Rng> Vault<R> {
         //        same handler which Routing will call after receiving a message.
 
         if self.self_is_handler_for(&dst_address) {
+            use crate::money_handler::AccountCmd::*;
             // TODO - We need a better way for determining which handler should be given the
             //        message.
             return match rpc {
@@ -442,14 +449,6 @@ impl<R: CryptoRng + Rng> Vault<R> {
                 }
                 | Rpc::Request {
                     request: Request::CreateLoginPacketFor { .. },
-                    ..
-                }
-                | Rpc::Request {
-                    request: Request::CreateBalance { .. },
-                    ..
-                }
-                | Rpc::Request {
-                    request: Request::TransferCoins { .. },
                     ..
                 }
                 | Rpc::Request {
@@ -466,6 +465,45 @@ impl<R: CryptoRng + Rng> Vault<R> {
                 } => self
                     .client_handler_mut()?
                     .handle_vault_rpc(requester_name, rpc),
+                Rpc::Request {
+                    request:
+                        Request::CreateAccount {
+                            amount,
+                            from,
+                            to,
+                            signature,
+                            ..
+                        },
+                    ..
+                } => self
+                    .money_handler_mut()?
+                    .handle(Open { amount, from, to }, signature),
+                Rpc::Request {
+                    request:
+                        Request::TransferMoney {
+                            amount,
+                            from,
+                            to,
+                            signature,
+                            ..
+                        },
+                    ..
+                } => self
+                    .money_handler_mut()?
+                    .handle(Withdraw { amount, from, to }, signature),
+                Rpc::Request {
+                    request:
+                        Request::DepositMoney {
+                            amount,
+                            from,
+                            to,
+                            signature,
+                            ..
+                        },
+                    ..
+                } => self
+                    .money_handler_mut()?
+                    .handle(Deposit { amount, from, to }, signature),
                 _ => self
                     .data_handler_mut()?
                     .handle_vault_rpc(requester_name, rpc),
@@ -547,23 +585,12 @@ impl<R: CryptoRng + Rng> Vault<R> {
 
     // TODO - remove this
     #[allow(unused)]
-    fn coins_handler(&self) -> Option<&CoinsHandler> {
-        match &self.state {
-            State::Elder {
-                ref coins_handler, ..
-            } => Some(coins_handler),
-            State::Adult(_) => None,
-        }
-    }
-
-    // TODO - remove this
-    #[allow(unused)]
-    fn coins_handler_mut(&mut self) -> Option<&mut CoinsHandler> {
+    fn money_handler_mut(&mut self) -> Option<&mut MoneyHandler> {
         match &mut self.state {
             State::Elder {
-                ref mut coins_handler,
+                ref mut money_handler,
                 ..
-            } => Some(coins_handler),
+            } => Some(money_handler),
             State::Adult(_) => None,
         }
     }

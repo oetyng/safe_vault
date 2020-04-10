@@ -13,7 +13,7 @@ use log::{error, trace};
 use pickledb::{PickleDb, PickleDbDumpPolicy};
 use rand::{distributions::Standard, CryptoRng, Rng};
 use safe_nd::{
-    ClientPublicId, Coins, IDataAddress, PublicId, PublicKey, Request, Result as NdResult, XorName,
+    ClientPublicId, IDataAddress, Money, PublicId, PublicKey, Request, Result as NdResult, XorName,
 };
 use serde::Serialize;
 use std::{borrow::Cow, fs, path::Path};
@@ -127,13 +127,8 @@ pub(crate) fn destination_address(request: &Request) -> Option<Cow<XorName>> {
         AppendSeq { ref append, .. } | AppendUnseq(ref append) => {
             Some(Cow::Borrowed(append.address.name()))
         }
-        TransferCoins {
-            ref destination, ..
-        } => Some(Cow::Borrowed(destination)),
-        CreateBalance {
-            ref new_balance_owner,
-            ..
-        } => Some(Cow::Owned(XorName::from(*new_balance_owner))),
+        TransferMoney { ref to, .. } => Some(Cow::Borrowed(to)),
+        CreateAccount { ref to, .. } => Some(Cow::Owned(XorName::from(*to))),
         CreateLoginPacket(login_packet) => Some(Cow::Borrowed(login_packet.destination())),
         CreateLoginPacketFor {
             new_login_packet, ..
@@ -156,10 +151,10 @@ pub(crate) enum AuthorisationKind {
     Mut,
     // Request to manage app keys.
     ManageAppKeys,
-    // Request to transfer coins
-    TransferCoins,
-    // Request to mutate and transfer coins
-    MutAndTransferCoins,
+    // Request to transfer Money
+    TransferMoney,
+    // Request to mutate and transfer Money
+    MutAndTransferMoney,
 }
 
 // Returns the type of authorisation needed for the given request.
@@ -183,14 +178,14 @@ pub(crate) fn authorisation_kind(request: &Request) -> AuthorisationKind {
         | AppendUnseq(_)
         | CreateLoginPacket(_)
         | UpdateLoginPacket(_) => AuthorisationKind::Mut,
-        CreateBalance { amount, .. } | CreateLoginPacketFor { amount, .. } => {
+        CreateAccount { amount, .. } | CreateLoginPacketFor { amount, .. } => {
             if amount.as_nano() == 0 {
                 AuthorisationKind::Mut
             } else {
-                AuthorisationKind::MutAndTransferCoins
+                AuthorisationKind::MutAndTransferMoney
             }
         }
-        TransferCoins { .. } => AuthorisationKind::TransferCoins,
+        TransferMoney { .. } => AuthorisationKind::TransferMoney,
         GetIData(IDataAddress::Pub(_)) => AuthorisationKind::GetPub,
         GetIData(IDataAddress::Unpub(_))
         | GetMData(_)
@@ -226,7 +221,7 @@ pub(crate) fn authorisation_kind(request: &Request) -> AuthorisationKind {
     }
 }
 
-pub(crate) fn get_refund_for_put<T>(result: &NdResult<T>) -> Option<Coins> {
+pub(crate) fn get_refund_for_put<T>(result: &NdResult<T>) -> Option<Money> {
     if result.is_err() {
         Some(COST_OF_PUT)
     } else {

@@ -20,13 +20,13 @@
 - add basic mock routing functions
 - send requests for deleting data via concensus
 - send create login packet requests to parsec
-- send transfer coins via consensus and rename
+- send transfer Money via consensus and rename
 - fix root_dir by using project's data dir by default
 - Send UpdateLoginPacket req via consensus
 - update to safe-nd 0.4.0
 - refactor test to verify granulated app permissions
 - allow to use multiple vaults for tests
-- add consensus votes on CreateBalance requests
+- add consensus votes on CreateAccount requests
 - send insert and delete auth keys request via…
 - change usage of idata term "kind" to "data"
 - introduce IDataRequest to eliminate unwraps
@@ -35,7 +35,7 @@
 - test that refunds are processed
 - introduce util function to calculate refund and move
 - remove explicitly-listed non-warn lints
-- send CreateBalance request via consensus
+- send CreateAccount request via consensus
 - add `phase-one` feature for updates
 - look up by message id
 - notify all connected instances of the client

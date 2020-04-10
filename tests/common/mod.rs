@@ -23,9 +23,9 @@ use mock_quic_p2p::{self as quic_p2p, Builder, Event, Network, OurType, Peer, Qu
 #[cfg(feature = "mock_parsec")]
 use routing::{self, NetworkConfig, Node};
 use safe_nd::{
-    AppFullId, AppPublicId, ClientFullId, ClientPublicId, Coins, Error, HandshakeRequest,
-    HandshakeResponse, Message, MessageId, Notification, PublicId, PublicKey, Request, Response,
-    Signature, Transaction, TransactionId,
+    AppFullId, AppPublicId, ClientFullId, ClientPublicId, Error, HandshakeRequest,
+    HandshakeResponse, Message, MessageId, Money, Notification, PublicId, PublicKey, Request,
+    Response, Signature, Transaction, TransactionId,
 };
 #[cfg(feature = "mock")]
 use safe_vault::{
@@ -784,16 +784,16 @@ pub fn create_balance(
     env: &mut Environment,
     src_client: &mut TestClient,
     dst_client: Option<&mut TestClient>,
-    amount: impl IntoCoins,
+    amount: impl IntoMoney,
 ) {
     let new_balance_owner = match dst_client {
         Some(ref dst_client) => *dst_client.public_id().public_key(),
         None => *src_client.public_id().public_key(),
     };
-    let amount = amount.into_coins();
+    let amount = amount.into_money();
     let transaction_id = 0;
 
-    let message_id = src_client.send_request(Request::CreateBalance {
+    let message_id = src_client.send_request(Request::CreateAccount {
         new_balance_owner,
         amount,
         transaction_id,
@@ -819,16 +819,16 @@ pub fn create_balance(
     assert_eq!(actual, expected);
 }
 
-pub fn transfer_coins(
+pub fn transfer_money(
     env: &mut Environment,
     src_client: &mut impl TestClientTrait,
     dst_client: &mut TestClient,
-    amount: impl IntoCoins,
+    amount: impl IntoMoney,
     transaction_id: TransactionId,
 ) {
-    let amount = amount.into_coins();
+    let amount = amount.into_money();
 
-    let message_id = src_client.send_request(Request::TransferCoins {
+    let message_id = src_client.send_request(Request::TransferMoney {
         destination: *dst_client.public_id().name(),
         amount,
         transaction_id,
@@ -852,22 +852,22 @@ pub fn gen_public_key(rng: &mut TestRng) -> PublicKey {
     *ClientFullId::new_ed25519(rng).public_id().public_key()
 }
 
-pub trait IntoCoins {
-    fn into_coins(self) -> Coins;
+pub trait IntoMoney {
+    fn into_money(self) -> Money;
 }
 
-impl IntoCoins for Coins {
-    fn into_coins(self) -> Coins {
+impl IntoMoney for Money {
+    fn into_money(self) -> Money {
         self
     }
 }
 
-impl IntoCoins for u64 {
-    fn into_coins(self) -> Coins {
-        Coins::from_nano(self)
+impl IntoMoney for u64 {
+    fn into_money(self) -> Money {
+        Money::from_nano(self)
     }
 }
 
-pub fn multiply_coins(coins: Coins, factor: u64) -> Coins {
-    Coins::from_nano(coins.as_nano() * factor)
+pub fn multiply_money(Money: Money, factor: u64) -> Money {
+    Money::from_nano(Money.as_nano() * factor)
 }

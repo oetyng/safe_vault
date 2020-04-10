@@ -26,9 +26,9 @@ use bytes::Bytes;
 use log::{debug, error, info, trace, warn};
 use rand::{CryptoRng, Rng};
 use safe_nd::{
-    AData, ADataAddress, AppPermissions, AppPublicId, Coins, Error as NdError, HandshakeRequest,
+    AData, ADataAddress, AppPermissions, AppPublicId, Error as NdError, HandshakeRequest,
     HandshakeResponse, IData, IDataAddress, IDataKind, LoginPacket, MData, Message, MessageId,
-    NodePublicId, Notification, PublicId, PublicKey, Request, Response, Result as NdResult,
+    Money, NodePublicId, Notification, PublicId, PublicKey, Request, Response, Result as NdResult,
     Signature, Transaction, TransactionId, XorName,
 };
 use serde::Serialize;
@@ -41,7 +41,7 @@ use std::{
 };
 
 /// The cost to Put a chunk to the network.
-pub const COST_OF_PUT: Coins = Coins::from_nano(1);
+pub const COST_OF_PUT: Money = Money::from_nano(1);
 
 #[derive(Clone, Debug)]
 struct ClientInfo {
@@ -332,13 +332,13 @@ impl ClientHandler {
             | AppendSeq { .. }
             | AppendUnseq(..) => self.handle_mutate_adata(client, request, message_id),
             //
-            // ===== Coins =====
+            // ===== Money =====
             //
-            TransferCoins {
+            TransferMoney {
                 destination,
                 amount,
                 transaction_id,
-            } => self.handle_transfer_coins_client_req(
+            } => self.handle_transfer_money_client_req(
                 &client.public_id,
                 destination,
                 amount,
@@ -353,7 +353,7 @@ impl ClientHandler {
                 self.send_response_to_client(message_id, response);
                 None
             }
-            CreateBalance {
+            CreateAccount {
                 new_balance_owner,
                 amount,
                 transaction_id,
@@ -793,7 +793,7 @@ impl ClientHandler {
                 new_login_packet,
                 message_id,
             ),
-            CreateBalance {
+            CreateAccount {
                 new_balance_owner,
                 amount,
                 transaction_id,
@@ -804,11 +804,11 @@ impl ClientHandler {
                 transaction_id,
                 message_id,
             ),
-            TransferCoins {
+            TransferMoney {
                 destination,
                 amount,
                 transaction_id,
-            } => self.handle_transfer_coins_vault_req(
+            } => self.handle_transfer_money_vault_req(
                 requester,
                 destination,
                 amount,
@@ -881,7 +881,7 @@ impl ClientHandler {
         requester: &PublicId,
         response: Response,
         message_id: MessageId,
-        refund: Option<Coins>,
+        refund: Option<Money>,
     ) -> Option<Action> {
         use Response::*;
         trace!(
@@ -896,7 +896,7 @@ impl ClientHandler {
         if let Some(refund_amount) = refund {
             if let Err(error) = self.deposit(requester.name(), refund_amount) {
                 error!(
-                    "{}: Failed to refund {} coins for {:?}: {:?}",
+                    "{}: Failed to refund {} Money for {:?}: {:?}",
                     self, refund_amount, requester, error,
                 )
             };
@@ -946,11 +946,11 @@ impl ClientHandler {
         &mut self,
         requester: &PublicId,
         owner_key: PublicKey,
-        amount: Coins,
+        amount: Money,
         transaction_id: TransactionId,
         message_id: MessageId,
     ) -> Option<Action> {
-        let request = Request::CreateBalance {
+        let request = Request::CreateAccount {
             new_balance_owner: owner_key,
             amount,
             transaction_id,
@@ -981,7 +981,7 @@ impl ClientHandler {
         &mut self,
         requester: PublicId,
         owner_key: PublicKey,
-        amount: Coins,
+        amount: Money,
         transaction_id: TransactionId,
         message_id: MessageId,
     ) -> Option<Action> {
@@ -1013,19 +1013,21 @@ impl ClientHandler {
         })
     }
 
-    fn handle_transfer_coins_client_req(
+    fn handle_transfer_money_client_req(
         &mut self,
         requester: &PublicId,
-        destination: XorName,
-        amount: Coins,
+        to: PublicKey,
+        amount: Money,
         transaction_id: TransactionId,
         message_id: MessageId,
     ) -> Option<Action> {
         Some(Action::ConsensusVote(ConsensusAction::PayAndForward {
-            request: Request::TransferCoins {
-                destination,
+            request: Request::TransferMoney {
                 amount,
+                requester.clone().public_key(),
+                to,
                 transaction_id,
+                
             },
             client_public_id: requester.clone(),
             message_id,
@@ -1033,11 +1035,11 @@ impl ClientHandler {
         }))
     }
 
-    fn handle_transfer_coins_vault_req(
+    fn handle_transfer_money_vault_req(
         &mut self,
         requester: PublicId,
         destination: XorName,
-        amount: Coins,
+        amount: Money,
         transaction_id: TransactionId,
         message_id: MessageId,
     ) -> Option<Action> {
@@ -1106,7 +1108,7 @@ impl ClientHandler {
         &mut self,
         requester: &PublicId,
         owner_key: PublicKey,
-        amount: Coins,
+        amount: Money,
     ) -> Result<(), NdError> {
         let own_request = utils::own_key(requester)
             .map(|key| key == &owner_key)
@@ -1119,7 +1121,7 @@ impl ClientHandler {
 
             Err(NdError::BalanceExists)
         } else {
-            let balance = Balance { coins: amount };
+            let balance = Balance { Money: amount };
             self.put_balance(&owner_key, &balance)?;
             Ok(())
         }
@@ -1263,54 +1265,54 @@ impl ClientHandler {
             .collect::<Vec<_>>()
     }
 
-    fn balance<K: balance::Key>(&self, key: &K) -> Option<Coins> {
-        self.balances.get(key).map(|balance| balance.coins)
-    }
+    // fn balance<K: balance::Key>(&self, key: &K) -> Option<Money> {
+    //     self.balances.get(key).map(|balance| balance.Money)
+    // }
 
-    fn withdraw<K: balance::Key>(&mut self, key: &K, amount: Coins) -> Result<(), NdError> {
-        if amount.as_nano() == 0 {
-            return Err(NdError::InvalidOperation);
-        }
-        let (public_key, mut balance) = self
-            .balances
-            .get_key_value(key)
-            .ok_or(NdError::NoSuchBalance)?;
-        balance.coins = balance
-            .coins
-            .checked_sub(amount)
-            .ok_or(NdError::InsufficientBalance)?;
-        self.put_balance(&public_key, &balance)
-    }
+    // fn withdraw<K: balance::Key>(&mut self, key: &K, amount: Money) -> Result<(), NdError> {
+    //     if amount.as_nano() == 0 {
+    //         return Err(NdError::InvalidOperation);
+    //     }
+    //     let (public_key, mut balance) = self
+    //         .balances
+    //         .get_key_value(key)
+    //         .ok_or(NdError::NoSuchBalance)?;
+    //     balance.Money = balance
+    //         .Money
+    //         .checked_sub(amount)
+    //         .ok_or(NdError::InsufficientBalance)?;
+    //     self.put_balance(&public_key, &balance)
+    // }
 
-    fn deposit<K: balance::Key>(&mut self, key: &K, amount: Coins) -> Result<(), NdError> {
-        let (public_key, mut balance) = self
-            .balances
-            .get_key_value(key)
-            .ok_or_else(|| NdError::NoSuchBalance)?;
-        balance.coins = balance
-            .coins
-            .checked_add(amount)
-            .ok_or(NdError::ExcessiveValue)?;
+    // fn deposit<K: balance::Key>(&mut self, key: &K, amount: Money) -> Result<(), NdError> {
+    //     let (public_key, mut balance) = self
+    //         .balances
+    //         .get_key_value(key)
+    //         .ok_or_else(|| NdError::NoSuchBalance)?;
+    //     balance.Money = balance
+    //         .Money
+    //         .checked_add(amount)
+    //         .ok_or(NdError::ExcessiveValue)?;
 
-        self.put_balance(&public_key, &balance)
-    }
+    //     self.put_balance(&public_key, &balance)
+    // }
 
-    fn put_balance(&mut self, public_key: &PublicKey, balance: &Balance) -> Result<(), NdError> {
-        trace!(
-            "{}: Setting balance to {} for {}",
-            self,
-            balance,
-            public_key
-        );
-        self.balances.put(public_key, balance).map_err(|error| {
-            error!(
-                "{}: Failed to update balance of {}: {}",
-                self, public_key, error
-            );
+    // fn put_balance(&mut self, public_key: &PublicKey, balance: &Balance) -> Result<(), NdError> {
+    //     trace!(
+    //         "{}: Setting balance to {} for {}",
+    //         self,
+    //         balance,
+    //         public_key
+    //     );
+    //     self.balances.put(public_key, balance).map_err(|error| {
+    //         error!(
+    //             "{}: Failed to update balance of {}: {}",
+    //             self, public_key, error
+    //         );
 
-            NdError::from("Failed to update balance")
-        })
-    }
+    //         NdError::from("Failed to update balance")
+    //     })
+    // }
 
     // Pays cost of a request.
     fn pay(
@@ -1319,13 +1321,13 @@ impl ClientHandler {
         requester_key: &PublicKey,
         request: &Request,
         message_id: MessageId,
-        cost: Coins,
+        cost: Money,
     ) -> Option<()> {
-        trace!("{}: {} is paying {} coins", self, requester_id, cost);
+        trace!("{}: {} is paying {} Money", self, requester_id, cost);
         match self.withdraw(requester_key, cost) {
             Ok(()) => Some(()),
             Err(error) => {
-                trace!("{}: Unable to withdraw {} coins: {}", self, cost, error);
+                trace!("{}: Unable to withdraw {} Money: {}", self, cost, error);
                 self.send_response_to_client(message_id, request.error_response(error));
                 None
             }
@@ -1381,13 +1383,13 @@ impl ClientHandler {
         })
     }
 
-    /// Step one of the process - the payer is effectively doing a `CreateBalance` request to
+    /// Step one of the process - the payer is effectively doing a `CreateAccount` request to
     /// new_owner, and bundling the new_owner's `CreateLoginPacket` along with it.
     fn handle_chained_create_login_packet_client_req(
         &mut self,
         payer: &PublicId,
         new_owner: PublicKey,
-        amount: Coins,
+        amount: Money,
         transaction_id: TransactionId,
         login_packet: LoginPacket,
         message_id: MessageId,
@@ -1414,7 +1416,7 @@ impl ClientHandler {
         }))
     }
 
-    /// Step two or three of the process - the payer is effectively doing a `CreateBalance` request
+    /// Step two or three of the process - the payer is effectively doing a `CreateAccount` request
     /// to new_owner, and bundling the new_owner's `CreateLoginPacket` along with it.
     #[allow(clippy::too_many_arguments)]
     fn handle_chained_create_login_packet_vault_req(
@@ -1422,7 +1424,7 @@ impl ClientHandler {
         src: XorName,
         payer: PublicId,
         new_owner: PublicKey,
-        amount: Coins,
+        amount: Money,
         transaction_id: TransactionId,
         login_packet: LoginPacket,
         message_id: MessageId,
@@ -1634,9 +1636,9 @@ impl ClientHandler {
         let signature_required = match utils::authorisation_kind(request) {
             AuthorisationKind::GetUnpub
             | AuthorisationKind::GetBalance
-            | AuthorisationKind::TransferCoins
+            | AuthorisationKind::TransferMoney
             | AuthorisationKind::Mut
-            | AuthorisationKind::MutAndTransferCoins
+            | AuthorisationKind::MutAndTransferMoney
             | AuthorisationKind::ManageAppKeys => true,
             AuthorisationKind::GetPub => false,
         };
@@ -1687,11 +1689,11 @@ impl ClientHandler {
             AuthorisationKind::Mut => {
                 self.check_app_permissions(app_id, |perms| perms.perform_mutations)
             }
-            AuthorisationKind::TransferCoins => {
-                self.check_app_permissions(app_id, |perms| perms.transfer_coins)
+            AuthorisationKind::TransferMoney => {
+                self.check_app_permissions(app_id, |perms| perms.transfer_money)
             }
-            AuthorisationKind::MutAndTransferCoins => self.check_app_permissions(app_id, |perms| {
-                perms.transfer_coins && perms.perform_mutations
+            AuthorisationKind::MutAndTransferMoney => self.check_app_permissions(app_id, |perms| {
+                perms.transfer_money && perms.perform_mutations
             }),
             AuthorisationKind::ManageAppKeys => Err(NdError::AccessDenied),
         };

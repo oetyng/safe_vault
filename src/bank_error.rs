@@ -7,7 +7,7 @@
 // specific language governing permissions and limitations relating to use of the SAFE Network
 // Software.
 
-use safe_nd::PublicKey;
+use safe_nd::{PublicKey, TransactionId};
 use serde::{Deserialize, Serialize};
 use std::{
     error,
@@ -56,7 +56,7 @@ pub enum Error {
     /// Failed to parse the string as [`Money`](struct.Money.html).
     FailedToParse(String),
     /// Transaction ID already exists.
-    TransactionIdExists,
+    TransactionIdExists(TransactionId),
     /// Insufficient balance.
     InsufficientBalance {
         account: PublicKey,
@@ -96,7 +96,7 @@ impl Display for Error {
             Error::InvalidSignature => write!(f, "Failed signature validation"),
             Error::NetworkOther(ref error) => write!(f, "Error on Vault network: {}", error),
             Error::LossOfPrecision => {
-                write!(f, "Lost precision on the number of coins during parsing")
+                write!(f, "Lost precision on the number of Money during parsing")
             }
             Error::FailedToParse(ref error) => {
                 write!(f, "Failed to parse from a string: {}", error)
@@ -114,10 +114,10 @@ impl error::Error for Error {
             Error::SigningKeyTypeMismatch => "Key type and signature type mismatch",
             Error::InvalidSignature => "Invalid signature",
             Error::NetworkOther(ref error) => error,
-            Error::LossOfPrecision => "Lost precision on the number of coins during parsing",
+            Error::LossOfPrecision => "Lost precision on the number of Money during parsing",
             Error::FailedToParse(_) => "Failed to parse entity",
             Error::TransactionIdExists(_) => "Transaction with a given ID already exists",
-            Error::InsufficientBalance(_) => "Not enough coins to complete this operation",
+            Error::InsufficientBalance(_) => "Not enough Money to complete this operation",
             Error::NoSuchAccount(_) => "Account does not exist",
             Error::AccountExists(_) => "Account already exists",
             Error::DuplicateMessageId => "MessageId already exists",

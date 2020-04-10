@@ -1,4 +1,4 @@
-// Copyright 2019 MaidSafe.net limited.
+// Copyright 2020 MaidSafe.net limited.
 //
 // This SAFE Network Software is licensed to you under The General Public License (GPL), version 3.
 // Unless required by applicable law or agreed to in writing, the SAFE Network Software distributed
@@ -6,9 +6,9 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use crate::bank::{AccountEvent, AccountId, Bank, Money};
+use crate::bank::{AccountEvent, AccountId, Bank};
 use crate::{vault::Init, Result};
-use safe_nd::NodePublicId;
+use safe_nd::{Money, NodePublicId, Signature};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Display, Formatter},
@@ -26,47 +26,85 @@ pub enum AccountCmd {
         amount: Money,
         from: AccountId,
         to: AccountId,
-    }, // amount, from, to
+    },
     Withdraw {
         amount: Money,
         from: AccountId,
         to: AccountId,
-    }, // amount, from, to
+    },
     Deposit {
         amount: Money,
         from: AccountId,
         to: AccountId,
-    }, // amount, from, to
+    },
+}
+
+impl AccountCmd {
+    fn from(self) -> AccountId {
+        match self {
+            Self::Open { from, .. } => from,
+            Self::Withdraw { from, .. } => from,
+            Self::Deposit { from, .. } => from,
+        }
+    }
 }
 
 impl MoneyHandler {
-    pub fn new<P: AsRef<Path>>(id: NodePublicId, root_dir: P, init_mode: Init) -> Result<Self> {
-        let bank = Bank::new(id, root_dir, init_mode)?;
+    pub fn new<P: AsRef<Path>>(
+        section_key: PublicKey,
+        id: NodePublicId,
+        root_dir: P,
+        init_mode: Init,
+    ) -> Result<Self> {
+        let bank = Bank::new(section_key, id, root_dir, init_mode)?;
         Ok(Self { id, bank })
     }
 
-    /// Opens an account.
-    pub fn open_account(&self, amount: Money, from: AccountId, to: AccountId) -> Result<()> {
+    /// Handles a signed AccountCmd.
+    pub fn handle(&self, cmd: AccountCmd, signature: Signature) -> Result<()> {
+        match self.check_signature(cmd, signature) {
+            Ok(_) => (), // all good, continue
+            Err(error) => return Err(error),
+        }
+        match cmd {
+            Open { amount, from, to } => self.open_account(amount, from, to),
+            Withdraw { amount, from, to } => self.withdraw(amount, from, to),
+            Deposit { amount, from, to } => self.deposit(amount, from, to),
+        }
+    }
+
+    /// The from-account must have signed the cmd for it to be valid.
+    fn check_signature(&self, cmd: AccountCmd, signature: Signature) -> Result<()> {
+        if let Deposit { .. } = cmd {
+            // no need for sender to sign this
+            return Ok(());
+        }
+        let sender = cmd.from();
+        match sender.verify(&signature, utils::serialise(&cmd)) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                warn!(
+                    "{}: ({:?}/{:?}) from {} is invalid: {}",
+                    self, cmd, signature, sender, error
+                );
+                Err(error.into())
+            }
+        }
+    }
+
+    /// Opens an account. TODO: initiate this at sender
+    fn open_account(&self, amount: Money, from: AccountId, to: AccountId) -> Result<()> {
         match self.bank.open_account(amount, from, to) {
             Ok(event) => Ok(self.bank.apply(event)),
-            Err(err) => Err(err), // todo: return the error
+            Err(err) => Err(err.into()),
         }
     }
 
-    /// Initiates a transfer.
-    pub fn initiate_transfer(&self, amount: Money, from: AccountId, to: AccountId) -> Result<()> {
-        // if !self.is_valid_request(requester, from) { [ERROR] }
+    /// Initiates a transfer; withdraws an amount.
+    fn withdraw(&self, amount: Money, from: AccountId, to: AccountId) -> Result<()> {
         match self.bank.withdraw(amount, from, to) {
             Ok(event) => self.complete_transfer(event),
-            Err(err) => Err(err),
-        }
-    }
-
-    /// Deposits a withdrawn amount.
-    pub fn deposit(&self, amount: Money, from: AccountId, to: AccountId) -> Result<()> {
-        match self.bank.deposit(amount, from, to) {
-            Ok(event) => Ok(self.bank.apply(event)),
-            Err(err) => Err(err),
+            Err(err) => Err(err.into()),
         }
     }
 
@@ -75,7 +113,7 @@ impl MoneyHandler {
             AccountEvent::Withdrawn { amount, from, to } => {
                 match self.try_deposit(amount, from, to) {
                     Ok(_) => Ok(self.bank.apply(event)),
-                    Err(err) => Err(err),
+                    error => error,
                 }
             }
             _ => panic!(), // todo: return an error
@@ -86,18 +124,26 @@ impl MoneyHandler {
         if self.bank.exists(to) {
             match self.bank.deposit(amount, from, to) {
                 Ok(event) => Ok(self.bank.apply(event)),
-                Err(err) => Err(err),
+                Err(err) => Err(err.into()),
             }
         } else {
             self.order_deposit(amount, from, to)
         }
     }
 
-    /// Sends Deposit cmd to other section.
+    /// Sends Deposit cmd to other section. TODO: Return Cmd/Action
     fn order_deposit(&self, amount: Money, from: AccountId, to: AccountId) -> Result<()> {
         // send cmd to other section
         let _cmd = AccountCmd::Deposit { amount, from, to };
         Ok(())
+    }
+
+    /// Concludes a transfer; Deposits a withdrawn amount.
+    fn deposit(&self, amount: Money, from: AccountId, to: AccountId) -> Result<()> {
+        match self.bank.deposit(amount, from, to) {
+            Ok(event) => Ok(self.bank.apply(event)),
+            Err(err) => Err(err.into()),
+        }
     }
 }
 
@@ -106,17 +152,3 @@ impl Display for MoneyHandler {
         write!(formatter, "{}", self.id)
     }
 }
-    
-// TODO:
-// /// Protection against Byzantines
-// fn is_valid_request(&self, requester: AccountId, cmd: &AccountCmd) -> bool {
-//     if cmd.from() != requester {
-//         println!(
-//             "[INVALID] Transfer from {:?} was was initiated by a proc that does not own this account: {:?}",
-//             requester, cmd.from()
-//         );
-//         false
-//     } else {
-//         true
-//     }
-// }

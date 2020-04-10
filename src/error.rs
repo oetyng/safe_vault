@@ -6,7 +6,7 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use crate::{chunk_store, routing};
+use crate::{bank_error, chunk_store, routing};
 use quick_error::quick_error;
 use safe_nd::{self, Request, Response};
 use serde_json;
@@ -60,6 +60,10 @@ quick_error! {
         /// NetworkData Entry error.
         NetworkDataEntry(error: safe_nd::EntryError) {
             display("NetworkData Entry error: {:?}", error)
+            from()
+        }
+        BankError(error: bank_error::Error) {
+            display("Bank error: {:?}", error)
             from()
         }
         /// Routing error.

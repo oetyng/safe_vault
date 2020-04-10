@@ -8,7 +8,7 @@
 
 use crate::{utils, vault::Init, Result, ToDbKey};
 use pickledb::PickleDb;
-use safe_nd::{Coins, PublicKey, XorName};
+use safe_nd::{Money, PublicKey, XorName};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -20,7 +20,7 @@ const BALANCES_DB_NAME: &str = "balances.db";
 
 #[derive(Serialize, Deserialize)]
 pub(super) struct Balance {
-    pub coins: Coins,
+    pub Money: Money,
 }
 
 pub(super) struct BalancesDb {
@@ -96,6 +96,6 @@ impl Key for XorName {
 
 impl Display for Balance {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}", self.coins)
+        write!(formatter, "{}", self.Money)
     }
 }

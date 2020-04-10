@@ -12,7 +12,7 @@ use crate::{
     vault::Init,
 };
 use pickledb::PickleDb;
-use safe_nd::{NodePublicId, PublicKey, XorName};
+use safe_nd::{Money, NodePublicId, PublicKey, XorName};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
@@ -31,8 +31,23 @@ pub(crate) struct Bank {
 pub type AccountId = PublicKey;
 
 impl Bank {
-    pub fn new<P: AsRef<Path>>(id: NodePublicId, root_dir: P, init_mode: Init) -> Result<Self> {
+    pub fn new<P: AsRef<Path>>(
+        section_key: PublicKey,
+        id: NodePublicId,
+        root_dir: P,
+        init_mode: Init,
+    ) -> Result<Self> {
         let accounts = utils::new_db(root_dir, ACCOUNTS_DB_NAME, init_mode)?;
+        if !accounts.exists(section_key.to_key()) {
+            accounts
+                .lcreate(to.to_key())
+                .unwrap()
+                .ladd(&AccountEvent::Opened {
+                    amount: Money(0),
+                    from: section_key,
+                    to: section_key,
+                });
+        }
         Ok(Self { id, accounts })
     }
 
@@ -107,17 +122,17 @@ impl Bank {
             return None;
         }
         let h = self.history(account);
-        let outgoing: u128 = h
+        let outgoing: u64 = h
             .iter()
             .filter(|t| t.from() == account)
             .map(|t| t.amount().amount)
             .sum();
-        let incoming: u128 = h
+        let incoming: u64 = h
             .iter()
             .filter(|t| t.to() == account)
             .map(|t| t.amount().amount)
             .sum();
-        let balance = Money::from(incoming - outgoing);
+        let balance = Money(incoming - outgoing);
 
         Some(balance)
     }
@@ -181,37 +196,17 @@ pub enum AccountEvent {
         amount: Money,
         from: AccountId,
         to: AccountId,
-    }, // amount, from, to
+    },
     Withdrawn {
         amount: Money,
         from: AccountId,
         to: AccountId,
-    }, // amount, from, to
+    },
     Deposited {
         amount: Money,
         from: AccountId,
         to: AccountId,
-    }, // amount, from, to
-}
-
-#[derive(PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-pub struct Money {
-    amount: u128,
-}
-
-impl Money {
-    pub fn zero() -> Money {
-        Self::from(0)
-    }
-    pub fn from(amount: u128) -> Money {
-        Money { amount }
-    }
-}
-
-impl Display for Money {
-    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.amount)
-    }
+    },
 }
 
 trait DbKey {

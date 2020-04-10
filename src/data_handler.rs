@@ -272,14 +272,14 @@ impl DataHandler {
             // ===== Invalid =====
             //
             GetBalance
-            | CreateBalance { .. }
+            | CreateAccount { .. }
             | CreateLoginPacket(_)
             | CreateLoginPacketFor { .. }
             | UpdateLoginPacket(_)
             | GetLoginPacket(_)
             | ListAuthKeysAndVersion
             | InsAuthKey { .. }
-            | TransferCoins { .. }
+            | TransferMoney { .. }
             | DelAuthKey { .. } => {
                 error!(
                     "{}: Should not receive {:?} as a data handler.",
