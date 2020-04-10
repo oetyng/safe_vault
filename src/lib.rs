@@ -31,12 +31,14 @@
 
 mod action;
 mod adult;
+mod bank;
+mod bank_error;
 mod chunk_store;
 mod client_handler;
-mod coins_handler;
 mod config_handler;
 mod data_handler;
 mod error;
+mod money_handler;
 mod rpc;
 mod to_db_key;
 mod utils;

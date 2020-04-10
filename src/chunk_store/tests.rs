@@ -71,7 +71,10 @@ impl Chunks {
             let size: u8 = rng.gen();
             let data = Data {
                 id: Id(0),
-                value: rng.sample_iter(&Standard).take(size as usize).collect(),
+                value: rng
+                    .sample_iter::<Standard, R>(&Standard)
+                    .take(size as usize)
+                    .collect(),
             };
             let serialised_size = unwrap!(bincode::serialized_size(&data));
 

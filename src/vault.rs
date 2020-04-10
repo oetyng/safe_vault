@@ -10,8 +10,8 @@ use crate::{
     action::{Action, ConsensusAction},
     adult::Adult,
     client_handler::ClientHandler,
-    coins_handler::CoinsHandler,
     data_handler::DataHandler,
+    money_handler::MoneyHandler,
     routing::{event::Event as RoutingEvent, NetworkEvent as ClientEvent, Node},
     rpc::Rpc,
     utils, Config, Result,
@@ -119,11 +119,11 @@ impl<R: CryptoRng + Rng> Vault<R> {
                 &total_used_space,
                 init_mode,
             )?;
-            let coins_handler = CoinsHandler::new(id.public_id().clone(), root_dir, init_mode)?;
+            let money_handler = MoneyHandler::new(id.public_id().clone(), root_dir, init_mode)?;
             State::Elder {
                 client_handler,
                 data_handler,
-                coins_handler,
+                money_handler,
             }
         } else {
             let _adult = Adult::new(
