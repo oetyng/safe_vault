@@ -204,7 +204,7 @@ impl ClientHandler {
 
                     if let Entry::Vacant(ve) = self.pending_msg_ids.entry(message_id) {
                         let _ = ve.insert(peer_addr);
-                        return self.handle_client_request(&client, request, message_id, signature);
+                        return self.handle_request_from_client(&client, request, message_id, signature);
                     } else {
                         info!(
                             "Pending MessageId {:?} reused - ignoring client message.",
@@ -254,7 +254,7 @@ impl ClientHandler {
     }
 
     #[allow(clippy::cognitive_complexity)]
-    fn handle_client_request(
+    fn handle_request_from_client(
         &mut self,
         client: &ClientInfo,
         request: Request,
@@ -338,7 +338,7 @@ impl ClientHandler {
                 destination,
                 amount,
                 transaction_id,
-            } => self.handle_transfer_money_client_req(
+            } => self.handle_network_at2_bank_update(
                 &client.public_id,
                 destination,
                 amount,
@@ -749,17 +749,17 @@ impl ClientHandler {
                 request,
                 requester,
                 message_id,
-            } => self.handle_vault_request(src, requester, request, message_id),
+            } => self.handle_requests_from_other_client_handlers(src, requester, request, message_id),
             Rpc::Response {
                 response,
                 requester,
                 message_id,
                 refund,
-            } => self.handle_response(src, &requester, response, message_id, refund),
+            } => self.handle_response_from_data_handlers(src, &requester, response, message_id, refund),
         }
     }
 
-    fn handle_vault_request(
+    fn handle_requests_from_other_client_handlers(
         &mut self,
         src: XorName,
         requester: PublicId,
@@ -808,7 +808,7 @@ impl ClientHandler {
                 destination,
                 amount,
                 transaction_id,
-            } => self.handle_transfer_money_vault_req(
+            } => self.handle_network_at2_bank_update(
                 requester,
                 destination,
                 amount,
@@ -875,7 +875,7 @@ impl ClientHandler {
     }
 
     /// Handle response from the data handlers.
-    fn handle_response(
+    fn handle_response_from_data_handlers(
         &mut self,
         data_handlers: XorName,
         requester: &PublicId,
@@ -985,14 +985,14 @@ impl ClientHandler {
         transaction_id: TransactionId,
         message_id: MessageId,
     ) -> Option<Action> {
-        let (result, refund) = match self.create_balance(&requester, owner_key, amount) {
+        let (result, refund) = match self.create_balance_at_this_client_handler( &requester, owner_key, amount) {
             Ok(()) => {
                 let destination = XorName::from(owner_key);
                 let transaction = Transaction {
                     id: transaction_id,
                     amount,
                 };
-                self.notify_destination_owners(&destination, transaction);
+                self.notify_client_about_transaction(&destination, transaction);
                 (Ok(transaction), None)
             }
             Err(error) => {
@@ -1013,7 +1013,7 @@ impl ClientHandler {
         })
     }
 
-    fn handle_transfer_money_client_req(
+    fn handle_network_at2_bank_update(
         &mut self,
         requester: &PublicId,
         to: PublicKey,
@@ -1035,7 +1035,7 @@ impl ClientHandler {
         }))
     }
 
-    fn handle_transfer_money_vault_req(
+    fn handle_network_at2_bank_update(
         &mut self,
         requester: PublicId,
         destination: XorName,
@@ -1050,7 +1050,7 @@ impl ClientHandler {
                     amount,
                 };
 
-                self.notify_destination_owners(&destination, transaction);
+                self.notify_client_about_transaction(&destination, transaction);
                 (Ok(transaction), None)
             }
             Err(error) => (Err(error), Some(amount)),
@@ -1098,13 +1098,13 @@ impl ClientHandler {
         })
     }
 
-    fn notify_destination_owners(&mut self, destination: &XorName, transaction: Transaction) {
+    fn notify_client_about_transaction(&mut self, destination: &XorName, transaction: Transaction) {
         for client_id in self.lookup_client_and_its_apps(destination) {
             self.send_notification_to_client(&client_id, &Notification(transaction));
         }
     }
 
-    fn create_balance(
+    fn create_balance_at_this_client_handler( 
         &mut self,
         requester: &PublicId,
         owner_key: PublicKey,
@@ -1431,7 +1431,7 @@ impl ClientHandler {
     ) -> Option<Action> {
         if &src == payer.name() {
             // Step two - create balance and forward login_packet.
-            if let Err(error) = self.create_balance(&payer, new_owner, amount) {
+            if let Err(error) = self.create_balance_at_this_client_handler( &payer, new_owner, amount) {
                 // Refund amount (Including the cost of creating the balance)
                 let refund = Some(amount.checked_add(COST_OF_PUT)?);
 
