@@ -77,13 +77,19 @@ impl Replica {
         Ok(TransferPropagated { proof })
     }
 
-    pub fn history(&self, identity: &Identity) -> Vec<Transfer> {
-        self.history.get(&identity).cloned().unwrap_or_default()
+    pub fn history(&self, identity: &Identity, since_index: u64) -> Vec<Transfer> {
+        let include_index = (since_index + 1) as usize;
+        if include_index >= self.history.len() {
+            return vec![];
+        }
+        let history = self.history.get(&identity).cloned().unwrap_or_default();
+        let new_transfers = history.split_at(include_index).1.to_vec();
+        new_transfers
     }
 
     pub fn balance(&self, identity: &Identity) -> Option<Money> {
         // todo: cache
-        let h = self.history(identity);
+        let h = self.history(identity, 0);
 
         let outgoing = h
             .iter()

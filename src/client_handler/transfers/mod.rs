@@ -98,12 +98,12 @@ impl Transfers {
                 messaging.respond_to_client(message_id, response);
                 None
             }
-            MoneyRequest::GetHistory(xorname) => {
-                let authorized = xorname == requester.public_key().into();
+            MoneyRequest::GetHistory { at, since_index } => {
+                let authorized = at == requester.public_key().into();
                 let result = if !authorized {
                     Err(NdError::NoSuchBalance)
                 } else {
-                    let history = self.replica.history(&requester.public_key());
+                    let history = self.replica.history(&requester.public_key(), since_index);
                     if history.len() > 0 {
                         Ok(history)
                     } else {
