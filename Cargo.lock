@@ -362,6 +362,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crdts"
+version = "3.0.0"
+source = "git+https://github.com/rust-crdt/rust-crdt?branch=useability-improvements#a880c631961c93a56f8346b29b6919f6c5e007a5"
+dependencies = [
+ "num-bigint 0.2.6",
+ "quickcheck",
+ "serde",
+]
+
+[[package]]
 name = "crossbeam"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1398,8 +1408,19 @@ checksum = "e63899ad0da84ce718c14936262a41cee2c79c981fc0a0e7c7beb47d5a07e8c1"
 dependencies = [
  "num-integer",
  "num-traits 0.2.11",
- "rand 0.3.23",
+ "rand 0.4.6",
  "rustc-serialize",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "090c7f9998ee0ff65aa5b723e4009f7b217707f1fb5ea551329cc4d6231fb304"
+dependencies = [
+ "autocfg 1.0.0",
+ "num-integer",
+ "num-traits 0.2.11",
 ]
 
 [[package]]
@@ -1687,6 +1708,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe1e430bdcf30c9fdc25053b9c459bb1a4672af4617b6c783d7d91dc17c6bbb0"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "quickcheck"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a44883e74aa97ad63db83c4bf8ca490f02b2fc02f92575e720c8551e843c945f"
+dependencies = [
+ "env_logger",
+ "log 0.4.8",
+ "rand 0.7.3",
+ "rand_core 0.5.1",
 ]
 
 [[package]]
@@ -2099,7 +2132,7 @@ dependencies = [
  "log 0.4.8",
  "lru_time_cache",
  "mock-quic-p2p",
- "num-bigint",
+ "num-bigint 0.1.44",
  "parsec",
  "quic-p2p",
  "rand 0.6.5",
@@ -2183,10 +2216,11 @@ checksum = "535622e6be132bccd223f4bb2b8ac8d53cda3c7a6394944d3b2b33fb974f9d76"
 
 [[package]]
 name = "safe-nd"
-version = "0.8.0"
-source = "git+https://github.com/maidsafe/safe-nd.git#b4e8572cca4d7265f2a0dbb584d3230a8531aa30"
+version = "0.9.0"
+source = "git+https://github.com/oetyng/safe-nd.git?rev=270f983#270f9838876fe4879dafb059a589b67670f81cbc"
 dependencies = [
  "bincode 1.1.4",
+ "crdts",
  "ed25519-dalek",
  "hex_fmt 0.3.0",
  "multibase",
@@ -2205,9 +2239,11 @@ dependencies = [
  "base64 0.10.1",
  "bincode 1.1.4",
  "bytes 0.4.12",
+ "crdts",
  "crossbeam-channel",
  "ctrlc",
  "directories 2.0.2",
+ "ed25519-dalek",
  "fake_clock",
  "flexi_logger",
  "fxhash",
@@ -2227,8 +2263,10 @@ dependencies = [
  "self_update",
  "serde",
  "serde_json",
+ "sha2",
  "structopt",
  "tempdir",
+ "threshold_crypto",
  "tiny-keccak",
  "unwrap",
 ]

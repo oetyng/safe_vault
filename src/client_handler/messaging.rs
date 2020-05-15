@@ -12,8 +12,8 @@ use bytes::Bytes;
 use log::{debug, error, info, trace, warn};
 use rand::{CryptoRng, Rng};
 use safe_nd::{
-    HandshakeRequest, HandshakeResponse, Message, MessageId, NodePublicId, Notification, PublicId,
-    Request, Response, Signature, Transaction, XorName,
+    HandshakeRequest, HandshakeResponse, Message, MessageId, NodePublicId, ProofOfAgreement,
+    PublicId, Request, Response, Signature, TransferNotification, XorName,
 };
 use serde::Serialize;
 use std::{
@@ -81,10 +81,10 @@ impl Messaging {
                         self, client.public_id, response
                     );
                 }
-                Ok(Message::Notification { notification, .. }) => {
+                Ok(Message::TransferNotification { payload, .. }) => {
                     info!(
                         "{}: {} invalidly sent {:?}",
-                        self, client.public_id, notification
+                        self, client.public_id, payload
                     );
                 }
                 Err(err) => {
@@ -167,10 +167,9 @@ impl Messaging {
         }
     }
 
-    #[allow(unused)]
-    pub fn notify_client(&mut self, client: &XorName, receipt: Transaction) {
+    pub fn notify_client(&mut self, client: &XorName, receipt: ProofOfAgreement) {
         for client_id in self.lookup_client_and_its_apps(client) {
-            self.send_notification_to_client(&client_id, &Notification(receipt));
+            self.send_notification_to_client(&client_id, &TransferNotification(receipt.clone()));
         }
     }
 
@@ -237,14 +236,17 @@ impl Messaging {
             | ListMDataPermissions(..)
             | GetMDataValue(..)
             | Mutation(..)
-            | Transaction(..) => {
+            | TransferValidation(..)
+            | TransferProofOfAgreement(..)
+            | TransferRegistration(..)
+            | TransferPropagation(..) => {
                 self.respond_to_client(message_id, response);
                 None
             }
             //
             // ===== Invalid =====
             //
-            GetLoginPacket(_) | GetBalance(_) | ListAuthKeysAndVersion(_) => {
+            GetLoginPacket(_) | GetBalance(_) | GetHistory(_) | ListAuthKeysAndVersion(_) => {
                 error!(
                     "{}: Should not receive {:?} as a client handler.",
                     self, response
@@ -362,7 +364,7 @@ impl Messaging {
     pub(crate) fn send_notification_to_client(
         &mut self,
         client_id: &PublicId,
-        notification: &Notification,
+        notification: &TransferNotification,
     ) {
         let peer_addrs = self.lookup_client_peer_addrs(&client_id);
 
@@ -377,8 +379,8 @@ impl Messaging {
         for peer_addr in peer_addrs {
             self.send(
                 peer_addr,
-                &Message::Notification {
-                    notification: notification.clone(),
+                &Message::TransferNotification {
+                    payload: notification.clone(),
                 },
             )
         }
@@ -408,16 +410,6 @@ impl Messaging {
                 }
             })
             .collect::<Vec<_>>()
-    }
-
-    pub(crate) fn notify_destination_owners(
-        &mut self,
-        destination: &XorName,
-        transaction: Transaction,
-    ) {
-        for client_id in self.lookup_client_and_its_apps(destination) {
-            self.send_notification_to_client(&client_id, &Notification(transaction));
-        }
     }
 
     fn try_bootstrap(&mut self, peer_addr: SocketAddr, client_id: &PublicId) {

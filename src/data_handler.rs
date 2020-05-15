@@ -122,7 +122,7 @@ impl DataHandler {
                 },
                 |adata_handler| adata_handler.handle_request(requester, adata_req, message_id),
             ),
-            Coins(_) | LoginPacket(_) | Client(_) => {
+            Money(_) | LoginPacket(_) | Client(_) => {
                 error!(
                     "{}: Should not receive {:?} as a data handler.",
                     self, request
@@ -183,8 +183,12 @@ impl DataHandler {
             | GetADataPermissions(_)
             | GetPubADataUserPermissions(_)
             | GetUnpubADataUserPermissions(_)
-            | Transaction(_)
+            | TransferValidation(_)
+            | TransferProofOfAgreement(_)
+            | TransferRegistration(_)
+            | TransferPropagation(_)
             | GetBalance(_)
+            | GetHistory(_)
             | ListAuthKeysAndVersion(_)
             | GetLoginPacket(_) => {
                 error!(

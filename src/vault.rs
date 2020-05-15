@@ -18,7 +18,7 @@ use crossbeam_channel::{Receiver, Select};
 use log::{debug, error, info, trace, warn};
 use rand::{CryptoRng, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use safe_nd::{ClientRequest, CoinsRequest, LoginPacketRequest, NodeFullId, Request, XorName};
+use safe_nd::{ClientRequest, LoginPacketRequest, MoneyRequest, NodeFullId, Request, XorName};
 use std::borrow::Cow;
 use std::{
     cell::{Cell, RefCell},
@@ -88,11 +88,11 @@ impl<R: CryptoRng + Rng> Vault<R> {
 
         #[cfg(feature = "mock_parsec")]
         {
-            trace!(
-                "creating vault {:?} with routing_id {:?}",
-                id.public_id().name(),
-                routing_node.id()
-            );
+            // trace!(
+            //     "creating vault {:?} with routing_id {:?}",
+            //     id.public_id().name(),
+            //     routing_node.id()
+            // );
         }
 
         let root_dir = config.root_dir()?;
@@ -498,11 +498,11 @@ impl<R: CryptoRng + Rng> Vault<R> {
                     ..
                 }
                 | Rpc::Request {
-                    request: Request::Coins(CoinsRequest::CreateBalance { .. }),
+                    request: Request::Money(MoneyRequest::ValidateTransfer { .. }),
                     ..
                 }
                 | Rpc::Request {
-                    request: Request::Coins(CoinsRequest::Transfer { .. }),
+                    request: Request::Money(MoneyRequest::RegisterTransfer { .. }),
                     ..
                 }
                 | Rpc::Request {

@@ -169,14 +169,12 @@ impl ADataHandler {
                 .put(&data)
                 .map_err(|error| error.to_string().into())
         };
-        let refund = utils::get_refund_for_put(&result);
         Some(Action::RespondToClientHandlers {
             sender: *data.name(),
             rpc: Rpc::Response {
                 requester,
                 response: Response::Mutation(result),
                 message_id,
-                refund,
             },
         })
     }
@@ -214,8 +212,6 @@ impl ADataHandler {
                 requester,
                 response: Response::Mutation(result),
                 message_id,
-                // Deletion is free so no refund
-                refund: None,
             },
         })
     }
@@ -234,7 +230,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetAData(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -256,7 +251,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetADataShell(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -278,7 +272,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetADataRange(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -299,7 +292,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetADataIndices(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -320,7 +312,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetADataLastEntry(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -347,7 +338,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetADataOwners(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -370,7 +360,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetPubADataUserPermissions(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -393,7 +382,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetUnpubADataUserPermissions(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -426,7 +414,6 @@ impl ADataHandler {
                 requester,
                 response,
                 message_id,
-                refund: None,
             },
         })
     }
@@ -448,7 +435,6 @@ impl ADataHandler {
                 requester,
                 response: Response::GetADataValue(result),
                 message_id,
-                refund: None,
             },
         })
     }
@@ -634,14 +620,12 @@ impl ADataHandler {
                     .put(&adata)
                     .map_err(|error| error.to_string().into())
             });
-        let refund = utils::get_refund_for_put(&result);
         Some(Action::RespondToClientHandlers {
             sender: *address.name(),
             rpc: Rpc::Response {
                 requester: requester.clone(),
                 response: Response::Mutation(result),
                 message_id,
-                refund,
             },
         })
     }
