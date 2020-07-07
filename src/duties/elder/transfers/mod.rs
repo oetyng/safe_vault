@@ -16,6 +16,7 @@ use crate::{
 };
 //use log::{error, trace};
 use safe_nd::{
+    TransferRegistered,
     DebitAgreementProof, Error as NdError, MessageId, NodePublicId, NodeRequest, PublicId,
     PublicKey, Request, Response, SignedTransfer, SystemOp, Transfers as MoneyRequest,
 };
@@ -251,15 +252,29 @@ impl Transfers {
         // We will just validate the proofs and then apply the event.
         match self.replica.borrow_mut().receive_propagated(proof) {
             Ok(_event) => None,
-            Err(err) => wrap(TransferCmd::RespondToGateway {
-                sender: *self.id.name(),
-                msg: Message::Response {
-                    response: Response::TransferPropagation(Err(err)),
-                    requester: requester.clone(),
-                    message_id,
-                    proof: None,
-                },
-            }),
+            Err(err) => {
+                    if err == NdError::TransferIdExists {
+                        wrap(TransferCmd::RespondToGateway {
+                        sender: *self.id.name(),
+                        msg: Message::Response {
+                            response: Response::TransferRegistration(Ok(TransferRegistered{debit_proof: proof.clone()})),
+                            requester: requester.clone(),
+                            message_id,
+                            proof: None
+                        },
+                        })
+                    } else {
+                        wrap(TransferCmd::RespondToGateway {
+                            sender: *self.id.name(),
+                            msg: Message::Response {
+                                response: Response::TransferPropagation(Err(err)),
+                                requester: requester.clone(),
+                                message_id,
+                                proof: None,
+                            },
+                            })
+                    }
+            },
         }
     }
 

@@ -103,8 +103,12 @@ impl DataPayment {
                     .borrow_mut()
                     .receive_propagated(&debit_agreement)
                 {
-                    return self.error_response(err, requester, message_id);
+                    if err != Error::TransferIdExists {
+                        return self.error_response(err, requester, message_id);
+
+                    }
                 }
+                
                 let signature = self.sign_with_signature_share(&utils::serialise(&request));
                 wrap(PaymentCmd::SendToSection(Message::Request {
                     request: Request::Node(NodeRequest::Write(write.clone())),
