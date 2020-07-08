@@ -228,22 +228,25 @@ impl Messaging {
             | ListMDataUserPermissions(..)
             | ListMDataPermissions(..)
             | GetMDataValue(..)
-            | Write(..)
             | GetBalance(_)
             | GetReplicaKeys(_)
             | GetHistory(_)
             | TransferValidation(..)
             | TransferDebitAgreementProof(..)
-            | TransferRegistration(..)
-            | TransferPropagation(..) => {
+            | Write(..)
+            => {
                 self.respond_to_client(message_id, response);
                 None
             }
             //
             // ===== Invalid =====
             //
-            GetLoginPacket(_) | ListAuthKeysAndVersion(_) => {
-                error!(
+            GetLoginPacket(_)
+            | TransferRegistration(..)
+            | ListAuthKeysAndVersion(_)
+            | TransferPropagation(..)
+            => {
+                warn!(
                     "{}: Should not receive {:?} as a client handler.",
                     self, response
                 );
