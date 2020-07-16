@@ -2,7 +2,7 @@ use crate::utils;
 use log::{error, info};
 use routing::Node;
 use safe_nd::{
-    IDataAddress, Message, MessageId, MsgEnvelope, MsgSender, Signature, SignatureShare, XorName,
+    BlobAddress, Message, MessageId, MsgEnvelope, MsgSender, Signature, SignatureShare, XorName,
 };
 use std::cell::RefCell;
 use std::collections::{hash_map::Entry, BTreeSet, HashMap, HashSet};
@@ -10,7 +10,7 @@ use std::rc::Rc;
 //use threshold_crypto::{Signature, SignatureShare};
 
 type RequestInfo = (MsgEnvelope, MsgSender, Vec<SignatureShare>);
-type DuplicationInfo = (IDataAddress, BTreeSet<XorName>, Vec<SignatureShare>);
+type DuplicationInfo = (BlobAddress, BTreeSet<XorName>, Vec<SignatureShare>);
 
 pub struct Accumulator {
     routing_node: Rc<RefCell<Node>>,

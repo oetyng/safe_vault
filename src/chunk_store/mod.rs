@@ -10,9 +10,9 @@
 
 mod chunk;
 pub(super) mod error;
-mod immutable;
+mod blob;
 mod login_packet;
-mod mutable;
+mod map;
 mod sequence;
 #[cfg(test)]
 mod tests;
@@ -22,7 +22,7 @@ use crate::{node::Init, utils};
 use chunk::{Chunk, ChunkId};
 use error::{Error, Result};
 use log::trace;
-use safe_nd::{Account, IData, MData, SData};
+use safe_nd::{Account, Blob, Map, Sequence};
 use std::{
     cell::Cell,
     fs::{self, DirEntry, File, Metadata},
@@ -38,9 +38,9 @@ const CHUNK_STORE_DIR: &str = "chunks";
 /// The max name length for a chunk file.
 const MAX_CHUNK_FILE_NAME_LENGTH: usize = 104;
 
-pub(crate) type ImmutableChunkStore = ChunkStore<IData>;
-pub(crate) type MutableChunkStore = ChunkStore<MData>;
-pub(crate) type SequenceChunkStore = ChunkStore<SData>;
+pub(crate) type BlobChunkStore = ChunkStore<Blob>;
+pub(crate) type MapChunkStore = ChunkStore<Map>;
+pub(crate) type SequenceChunkStore = ChunkStore<Sequence>;
 pub(crate) type AccountChunkStore = ChunkStore<Account>;
 
 /// `ChunkStore` is a store of data held as serialised files on disk, implementing a maximum disk
@@ -190,15 +190,15 @@ pub(crate) trait Subdir {
     fn subdir() -> &'static Path;
 }
 
-impl Subdir for ImmutableChunkStore {
+impl Subdir for BlobChunkStore {
     fn subdir() -> &'static Path {
-        Path::new("immutable")
+        Path::new("blob")
     }
 }
 
-impl Subdir for MutableChunkStore {
+impl Subdir for MapChunkStore {
     fn subdir() -> &'static Path {
-        Path::new("mutable")
+        Path::new("map")
     }
 }
 

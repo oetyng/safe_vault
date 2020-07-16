@@ -149,7 +149,7 @@ impl Metadata {
     //                 message_id,
     //                 request,
     //             ),
-    //             GetIData(result) => self.elder_stores.blob_register().handle_get_result(
+    //             GetBlob(result) => self.elder_stores.blob_register().handle_get_result(
     //                 result,
     //                 message_id,
     //                 requester,
@@ -174,13 +174,13 @@ impl Metadata {
 
     // fn initiate_duplication(
     //     &mut self,
-    //     address: IDataAddress,
+    //     address: BlobAddress,
     //     holders: BTreeSet<XorName>,
     //     message_id: MessageId,
     //     accumulated_signature: Option<Signature>,
     // ) -> Option<OutboundMsg> {
     //     trace!(
-    //         "Sending GetIData request for address: ({:?}) to {:?}",
+    //         "Sending GetBlob request for address: ({:?}) to {:?}",
     //         address,
     //         holders,
     //     );
@@ -201,7 +201,7 @@ impl Metadata {
     //     sender: SrcLocation,
     //     response: Response,
     //     message_id: MessageId,
-    //     idata_address: IDataAddress,
+    //     idata_address: BlobAddress,
     //     signature: Signature,
     // ) -> Option<OutboundMsg> {
     //     use Response::*;
