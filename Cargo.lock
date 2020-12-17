@@ -2642,7 +2642,7 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 [[package]]
 name = "sn_client"
 version = "0.44.5"
-source = "git+https://github.com/oetyng/sn_client?branch=section-wallet#635d75d18a90dfdc45db615fcaf341bdb8d9a40e"
+source = "git+https://github.com/oetyng/sn_client?branch=multi-sig-wallet#ef3c420b7e7c7f221c68d55b250af2b3abd24fb2"
 dependencies = [
  "async-trait",
  "bincode",
@@ -2680,7 +2680,7 @@ dependencies = [
 [[package]]
 name = "sn_data_types"
 version = "0.11.37"
-source = "git+https://github.com/oetyng/sn_data_types?branch=section-wallet#b8473c27b4239fdc10cbf73030a60129c29836bb"
+source = "git+https://github.com/oetyng/sn_data_types?branch=multi-sig-wallet#ef83d81a2dcfb2fe4b393eef3bdd02be24725f9d"
 dependencies = [
  "bincode",
  "crdts",
@@ -2787,7 +2787,7 @@ dependencies = [
 [[package]]
 name = "sn_transfers"
 version = "0.2.4"
-source = "git+https://github.com/oetyng/sn_transfers?branch=section-wallet#ed0e81a03e94951b4362757ba61569b0380018db"
+source = "git+https://github.com/oetyng/sn_transfers?branch=multi-sig-wallet#1739be73b0e823bb67bd63690d6c3e265ad14fd0"
 dependencies = [
  "bincode",
  "crdts",
