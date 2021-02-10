@@ -148,9 +148,7 @@ pub struct NodeDuties {
 
 impl NodeDuties {
     pub async fn new(node_info: NodeInfo, network_api: Network) -> Result<Self> {
-        // todo: do not instantiate AdultState here..
-        let state =
-            NodeState::Adult(AdultState::new(node_info.clone(), network_api.clone()).await?);
+        let state = NodeState::Infant(network_api.public_key().await);
         let msg_analysis = ReceivedMsgAnalysis::new(state);
         let network_events = NetworkEvents::new(msg_analysis);
         let messaging = Messaging::new(network_api.clone());
