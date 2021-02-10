@@ -2330,6 +2330,7 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 [[package]]
 name = "sn_data_types"
 version = "0.14.3"
+source = "git+https://github.com/oetyng/sn_data_types?branch=remove-msgenvelope#1b2a0e655b61bcff544d5d4deddd4fcc64f439c1"
 dependencies = [
  "bincode",
  "crdts",
@@ -2363,7 +2364,8 @@ dependencies = [
 
 [[package]]
 name = "sn_messaging"
-version = "3.0.2"
+version = "3.0.0"
+source = "git+https://github.com/oetyng/sn_messaging?branch=remove-msgenvelope#f66eb4a8d7ef9981d9a521a080ab2dfd13d08e45"
 dependencies = [
  "bincode",
  "bytes 1.0.1",
@@ -2434,7 +2436,8 @@ dependencies = [
 
 [[package]]
 name = "sn_routing"
-version = "0.42.4"
+version = "0.42.2"
+source = "git+https://github.com/oetyng/sn_routing?branch=remove-msgenvelope#f807818a7aec6de659550763e216d531cbe61e46"
 dependencies = [
  "bincode",
  "bls_dkg",
@@ -2463,6 +2466,7 @@ dependencies = [
 [[package]]
 name = "sn_transfers"
 version = "0.3.2"
+source = "git+https://github.com/oetyng/sn_transfers?branch=remove-msgenvelope#6d8fc7c69ca299a4a32b7693c5b393b8611f3649"
 dependencies = [
  "bincode",
  "crdts",
