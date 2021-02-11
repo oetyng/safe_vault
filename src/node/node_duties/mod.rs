@@ -195,13 +195,6 @@ impl NodeDuties {
         }
     }
 
-    // fn adult_state(&mut self) -> Result<AdultState> {
-    //     Ok(match self.adult_duties() {
-    //         Some(duties) => duties.state().clone(),
-    //         None => return Err(Error::InvalidOperation),
-    //     })
-    // }
-
     fn node_state(&mut self) -> Result<NodeState> {
         Ok(match self.elder_duties() {
             Some(duties) => NodeState::Elder(duties.state().clone()),

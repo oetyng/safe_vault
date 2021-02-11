@@ -463,7 +463,6 @@ impl BlobRegister {
         if let Ok(holder) = chunk_holder {
             for chunk_address in holder.chunks {
                 let db_key = chunk_address.to_db_key()?;
-                // .map_err(|e| DtError::NetworkOther(e.to_string()))?;
                 let chunk_metadata = self.get_metadata_for(chunk_address);
 
                 if let Ok(mut metadata) = chunk_metadata {
@@ -487,9 +486,7 @@ impl BlobRegister {
         }
 
         // Since the node has left the section, remove it from the holders DB
-        if let Err(error) = self.dbs.holders.borrow_mut().rem(
-            &node.to_db_key()?, // .map_err(|e| DtError::NetworkOther(e.to_string()))?,
-        ) {
+        if let Err(error) = self.dbs.holders.borrow_mut().rem(&node.to_db_key()?) {
             warn!("{}: Failed to delete metadata from DB: {:?}", self, error);
         };
 
@@ -497,9 +494,12 @@ impl BlobRegister {
     }
 
     fn get_holder(&self, holder: XorName) -> Result<HolderMetadata> {
-        match self.dbs.holders.borrow().get::<HolderMetadata>(
-            &holder.to_db_key()?, // .map_err(|e| DtError::NetworkOther(e.to_string()))?,
-        ) {
+        match self
+            .dbs
+            .holders
+            .borrow()
+            .get::<HolderMetadata>(&holder.to_db_key()?)
+        {
             Some(metadata) => {
                 if metadata.chunks.is_empty() {
                     warn!("{}: is not responsible for any chunk", holder);
@@ -516,9 +516,12 @@ impl BlobRegister {
     }
 
     fn get_metadata_for(&self, address: BlobAddress) -> Result<ChunkMetadata> {
-        match self.dbs.metadata.borrow().get::<ChunkMetadata>(
-            &address.to_db_key()?, // .map_err(|e| DtError::NetworkOther(e.to_string()))?,
-        ) {
+        match self
+            .dbs
+            .metadata
+            .borrow()
+            .get::<ChunkMetadata>(&address.to_db_key()?)
+        {
             Some(metadata) => {
                 if metadata.holders.is_empty() {
                     warn!("{}: Metadata holders is empty for: {:?}", self, address);
@@ -537,25 +540,9 @@ impl BlobRegister {
     // Returns `XorName`s of the target holders for an Blob chunk.
     // Used to fetch the list of holders for a new chunk.
     async fn get_holders_for_chunk(&self, target: &XorName) -> Vec<XorName> {
-        //let closest_adults =
         self.elder_state
             .adults_sorted_by_distance_to(&target, CHUNK_COPY_COUNT)
             .await
-
-        // TODO: Investigate elder blob storage
-        // if closest_adults.len() < CHUNK_COPY_COUNT {
-        //     let take = CHUNK_COPY_COUNT - closest_adults.len();
-        //     let mut closest_elders = self
-        //         .routing
-        //         .our_elder_names_sorted_by_distance_to(&target, take)
-        //         .await;
-        //     closest_adults.append(&mut closest_elders);
-        //     closest_adults
-        // } else {
-        //     closest_adults
-        // }
-
-        //closest_adults
     }
 
     // Returns `XorName`s of the new target holders for an Blob chunk.

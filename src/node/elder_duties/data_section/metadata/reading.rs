@@ -41,7 +41,7 @@ async fn blob(
     msg_id: MessageId,
     origin: User,
 ) -> Result<NodeMessagingDuty> {
-    register.read(read, msg_id, origin).await // since the data is sent on to adults, the entire msg is passed in
+    register.read(read, msg_id, origin).await
 }
 
 async fn map(
@@ -50,7 +50,7 @@ async fn map(
     msg_id: MessageId,
     origin: User,
 ) -> Result<NodeMessagingDuty> {
-    storage.read(read, msg_id, origin).await // map data currently stay at elders, so the msg is not needed
+    storage.read(read, msg_id, origin).await
 }
 
 async fn sequence(
@@ -59,5 +59,5 @@ async fn sequence(
     msg_id: MessageId,
     origin: User,
 ) -> Result<NodeMessagingDuty> {
-    storage.read(read, msg_id, origin).await // sequence data currently stay at elders, so the msg is not needed
+    storage.read(read, msg_id, origin).await
 }

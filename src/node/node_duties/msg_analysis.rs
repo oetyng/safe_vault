@@ -513,14 +513,6 @@ impl ReceivedMsgAnalysis {
         Ok(res)
     }
 
-    // fn elder_state(&self) -> Result<&ElderState> {
-    //     if let NodeState::Elder(state) = &self.state {
-    //         Ok(state)
-    //     } else {
-    //         Err(Error::InvalidOperation)
-    //     }
-    // }
-
     fn adult_state(&self) -> Result<&AdultState> {
         if let NodeState::Adult(state) = &self.state {
             Ok(state)

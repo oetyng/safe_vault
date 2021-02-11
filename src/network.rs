@@ -143,15 +143,6 @@ impl Network {
             .map_err(Error::Routing)
     }
 
-    // pub async fn send_message_to_client(&self, peer_addr: SocketAddr, msg: Message) -> Result<()> {
-    //     self.routing
-    //         .lock()
-    //         .await
-    //         .send_message_to_client(peer_addr, msg)
-    //         .await
-    //         .map_err(Error::Routing)
-    // }
-
     pub async fn our_history(&self) -> SectionProofChain {
         self.routing.lock().await.our_history().await
     }
