@@ -15,12 +15,6 @@
 // so, to correctly transition between keys, we need to not mix states,
 // and keep a tidy order, i.e. use one constellation at a time.
 
-// What things do we _need_ to snapshot?
-// - Public/Secret KeySet
-// - ..
-// What things do we _need_ to access most current state of?
-// - ..
-
 use crate::{chunk_store::UsedSpace, Network, Result};
 use bls::{PublicKeySet, PublicKeyShare};
 use ed25519_dalek::PublicKey as Ed25519PublicKey;
@@ -35,6 +29,15 @@ use std::{
     path::{Path, PathBuf},
 };
 use xor_name::{Prefix, XorName};
+
+// we want a consistent view of the elder constellation
+
+// when we have an ElderChange, underlying sn_routing will
+// return the new key set on querying (caveats in high churn?)
+// but we want a snapshot of the state to work with, before we use the new keys
+
+// so, to correctly transition between keys, we need to not mix states,
+// and keep a tidy order, i.e. use one constellation at a time.
 
 #[derive(Clone)]
 ///

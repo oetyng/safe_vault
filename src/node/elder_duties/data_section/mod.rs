@@ -213,8 +213,6 @@ impl DataSection {
     /// Name of the node
     /// Age of the node
     pub async fn member_left(&mut self, node_id: XorName, _age: u8) -> Result<NodeOperation> {
-        // marks the reward account as
-        // awaiting claiming of the counter
         let first = self
             .rewards
             .process_reward_duty(RewardDuty::ProcessCmd {

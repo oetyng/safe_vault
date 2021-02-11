@@ -67,44 +67,6 @@ impl ChunkStorage {
         }
     }
 
-    // #[allow(unused)]
-    // pub(crate) async fn take_replica(
-    //     &mut self,
-    //     data: &Blob,
-    //     msg_id: MessageId,
-    //     origin: SrcLocation,
-    //     accumulated_signature: &Signature,
-    // ) -> Result<NodeMessagingDuty> {
-    //     let msg = match self.try_store(data, origin).await {
-    //         Ok(()) => Message::NodeEvent {
-    //             event: NodeEvent::ReplicationCompleted {
-    //                 chunk: *data.address(),
-    //                 proof: accumulated_signature.clone(),
-    //             },
-    //             id: MessageId::new(),
-    //             correlation_id: msg_id,
-    //         },
-    //         Err(error) => {
-    //             let message_error = convert_to_error_message(error)?;
-    //             Message::NodeCmdError {
-    //                 id: MessageId::new(),
-    //                 error: NodeCmdError::Data(NodeDataError::ChunkReplication {
-    //                     address: *data.address(),
-    //                     error: message_error,
-    //                 }),
-    //                 correlation_id: msg_id,
-    //                 cmd_origin: origin,
-    //             }
-    //         }
-    //     };
-    //     self.wrapping
-    //         .send_to_node(Msg {
-    //             msg,
-    //             dst: origin.to_dst(),
-    //         })
-    //         .await
-    // }
-
     async fn try_store(&mut self, data: &Blob, origin: EndUser) -> Result<()> {
         info!("TRYING TO STORE BLOB");
         if data.is_private() {
@@ -220,29 +182,6 @@ impl ChunkStorage {
     pub async fn used_space_ratio(&self) -> f64 {
         self.chunks.used_space_ratio().await
     }
-
-    // pub(crate) fn get_for_duplciation(
-    //     &self,
-    //     address: BlobAddress,
-    //     msg: &Message,
-    // ) -> Result<NodeMessagingDuty> {
-
-    //     match self.chunks.get(&address) {
-
-    //     }
-
-    //     let mut targets: BTreeSet<XorName> = Default::default();
-    //     let _ = targets.insert(XorName(xorname.0));
-    //     Some(NodeMessagingDuty::SendToNode {
-    //         targets,
-    //         msg: Message::QueryResponse {
-    //             requester: requester.clone(),
-    //             response: Response::GetBlob(result),
-    //             message_id,
-    //             proof: Some((request, (accumulated_signature?).clone())),
-    //         },
-    //     })
-    // }
 
     pub(crate) async fn delete(
         &mut self,

@@ -484,7 +484,7 @@ pub enum RewardDuty {
         query: RewardQuery,
         ///
         msg_id: MessageId,
-        // ///
+        ///
         origin: SrcLocation,
     },
     ///
@@ -492,7 +492,7 @@ pub enum RewardDuty {
         cmd: RewardCmd,
         ///
         msg_id: MessageId,
-        // ///
+        ///
         origin: SrcLocation,
     },
     NoOp,
@@ -586,7 +586,7 @@ pub enum TransferDuty {
         query: TransferQuery,
         ///
         msg_id: MessageId,
-        // ///
+        ///
         origin: SrcLocation,
     },
     ///
@@ -594,7 +594,7 @@ pub enum TransferDuty {
         cmd: TransferCmd,
         ///
         msg_id: MessageId,
-        // ///
+        ///
         origin: SrcLocation,
     },
     NoOp,
