@@ -17,11 +17,12 @@ use serde::{Deserialize, Serialize};
 use sn_data_types::{Blob, BlobAddress, Error as DtError, PublicKey, Result as NdResult};
 use sn_messaging::{
     client::{
-        BlobRead, BlobWrite, CmdError, DataQuery, Error as ErrorMessage, Message, MessageId,
-        NodeCmd, NodeDataCmd, Query, QueryResponse,
+        BlobRead, BlobWrite, CmdError, DataCmd, DataQuery, Error as ErrorMessage, Query,
+        QueryResponse,
     },
     location::User,
-    DstLocation, SrcLocation,
+    node::{NodeCmd, NodeSystemCmd},
+    ClientMessage, DstLocation, MessageId, NodeMessage, SrcLocation,
 };
 
 use std::{
@@ -89,12 +90,13 @@ impl BlobRegister {
                     return Ok(NodeMessagingDuty::NoOp);
                 } else {
                     return Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                        msg: Message::CmdError {
+                        msg: ClientMessage::CmdError {
                             error: CmdError::Data(ErrorMessage::DataExists),
                             id: MessageId::new(),
                             cmd_origin: SrcLocation::User(origin),
                             correlation_id: msg_id,
-                        },
+                        }
+                        .into(),
                         dst: DstLocation::Section(origin.name()),
                         to_be_aggregated: false,
                     }));
@@ -135,10 +137,14 @@ impl BlobRegister {
         if !results.is_empty() {
             info!("Results is not empty!");
         }
-        let msg = Message::NodeCmd {
-            cmd: NodeCmd::Data(NodeDataCmd::Blob(BlobWrite::New(data))),
+        let msg = NodeMessage::NodeCmd {
+            cmd: NodeCmd::Data {
+                cmd: DataCmd::Blob(BlobWrite::New(data)),
+                origin,
+            },
             id: msg_id,
-        };
+        }
+        .into();
         Ok(NodeMessagingDuty::SendToAdults {
             targets: target_holders,
             msg,
@@ -153,12 +159,13 @@ impl BlobRegister {
     ) -> Result<NodeMessagingDuty> {
         let message_error = convert_to_error_message(error)?;
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::CmdError {
+            msg: ClientMessage::CmdError {
                 error: CmdError::Data(message_error),
                 id: MessageId::new(),
                 cmd_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -194,10 +201,14 @@ impl BlobRegister {
             .collect();
         if !results.is_empty() {}
 
-        let msg = Message::NodeCmd {
-            cmd: NodeCmd::Data(NodeDataCmd::Blob(BlobWrite::DeletePrivate(address))),
+        let msg = NodeMessage::NodeCmd {
+            cmd: NodeCmd::Data {
+                cmd: DataCmd::Blob(BlobWrite::DeletePrivate(address)),
+                origin,
+            },
             id: msg_id,
-        };
+        }
+        .into();
         Ok(NodeMessagingDuty::SendToAdults {
             targets: metadata.holders,
             msg,
@@ -318,7 +329,7 @@ impl BlobRegister {
         current_holders: BTreeSet<XorName>,
     ) -> Vec<NodeOperation> {
         use NodeCmd::*;
-        use NodeDataCmd::*;
+        use NodeSystemCmd::*;
         let mut node_ops = Vec::new();
         let messages = self
             .get_new_holders_for_chunk(&address)
@@ -328,14 +339,15 @@ impl BlobRegister {
                 let message_id = MessageId::combine(vec![*address.name(), new_holder]);
                 info!("Sending replicate-chunk cmd to NewHolder {:?}", new_holder);
                 (
-                    Message::NodeCmd {
-                        cmd: Data(ReplicateChunk {
+                    NodeMessage::NodeCmd {
+                        cmd: System(ReplicateChunk {
                             new_holder,
                             address,
                             current_holders: current_holders.clone(),
                         }),
                         id: message_id,
-                    },
+                    }
+                    .into(),
                     new_holder,
                 )
             })
@@ -373,14 +385,14 @@ impl BlobRegister {
     ) -> Result<NodeMessagingDuty> {
         let query_error = |error: Error| async {
             let message_error = convert_to_error_message(error)?;
-            let err_msg = Message::QueryResponse {
+            let err_msg = ClientMessage::QueryResponse {
                 response: QueryResponse::GetBlob(Err(message_error)),
                 id: MessageId::in_response_to(&msg_id),
                 query_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
             };
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                msg: err_msg,
+                msg: err_msg.into(),
                 dst: DstLocation::User(origin),
                 to_be_aggregated: true,
             }))
@@ -396,10 +408,11 @@ impl BlobRegister {
                 return query_error(Error::NetworkData(DtError::AccessDenied(*origin.id()))).await;
             }
         };
-        let msg = Message::Query {
+        let msg = ClientMessage::Query {
             query: Query::Data(DataQuery::Blob(BlobRead::Get(address))),
             id: msg_id,
-        };
+        }
+        .into();
         Ok(NodeMessagingDuty::SendToAdults {
             targets: metadata.holders,
             msg,

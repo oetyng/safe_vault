@@ -30,8 +30,8 @@ use sn_data_types::{
     TransferPropagated, WalletInfo,
 };
 use sn_messaging::{
-    client::{Message, MessageId, NodeCmd, NodeQuery, NodeSystemCmd, NodeTransferQuery},
-    DstLocation, SrcLocation,
+    node::{NodeCmd, NodeQuery, NodeRewardQuery, NodeSystemCmd},
+    DstLocation, MessageId, NodeMessage, SrcLocation,
 };
 use std::collections::{BTreeMap, VecDeque};
 
@@ -249,13 +249,14 @@ impl NodeDuties {
     async fn notify_section_of_our_storage(&mut self) -> Result<NodeOperation> {
         let node_id = PublicKey::from(self.network_api.public_key().await);
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::NodeCmd {
+            msg: NodeMessage::NodeCmd {
                 cmd: NodeCmd::System(NodeSystemCmd::StorageFull {
                     section: node_id.into(),
                     node_id,
                 }),
                 id: MessageId::new(),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(node_id.into()),
             to_be_aggregated: false,
         })
@@ -266,13 +267,14 @@ impl NodeDuties {
         let node_state = self.node_state()?;
         info!("Registering wallet: {}", wallet);
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::NodeCmd {
+            msg: NodeMessage::NodeCmd {
                 cmd: NodeCmd::System(NodeSystemCmd::RegisterWallet {
                     wallet,
                     section: PublicKey::Ed25519(node_state.node_id()).into(),
                 }),
                 id: MessageId::new(),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(wallet.into()),
             to_be_aggregated: false,
         })
@@ -342,13 +344,14 @@ impl NodeDuties {
 
             let dst = DstLocation::Section(credit.recipient.into());
             return Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                msg: Message::NodeCmd {
+                msg: NodeMessage::NodeCmd {
                     cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
                         credit,
                         sig: credit_sig_share,
                     }),
                     id: MessageId::new(),
-                },
+                }
+                .into(),
                 dst,
                 to_be_aggregated: false,
             })
@@ -365,13 +368,13 @@ impl NodeDuties {
             trace!("Beginning transition to Elder duties.");
             // must get the above wrapping instance before overwriting stage
             self.stage = Stage::AssumingElderDuties(VecDeque::new());
-
-            use NodeTransferQuery::CatchUpWithSectionWallet;
+            // queries the other Elders for the section wallet history
             return Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                msg: Message::NodeQuery {
-                    query: NodeQuery::Transfers(CatchUpWithSectionWallet(wallet_id)),
+                msg: NodeMessage::NodeQuery {
+                    query: NodeQuery::Rewards(NodeRewardQuery::GetSectionWalletHistory),
                     id: MessageId::new(),
-                },
+                }
+                .into(),
                 dst: DstLocation::Section(wallet_id.into()),
                 to_be_aggregated: false,
             })
@@ -412,13 +415,14 @@ impl NodeDuties {
                     queued_ops: queued_ops.drain(..).collect(),
                 });
                 let cmd = Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                    msg: Message::NodeCmd {
+                    msg: NodeMessage::NodeCmd {
                         cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
                             credit,
                             sig: credit_sig_share,
                         }),
                         id: MessageId::new(),
-                    },
+                    }
+                    .into(),
                     dst,
                     to_be_aggregated: false,
                 })
@@ -446,13 +450,14 @@ impl NodeDuties {
                     });
 
                     let cmd = Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                        msg: Message::NodeCmd {
+                        msg: NodeMessage::NodeCmd {
                             cmd: NodeCmd::System(NodeSystemCmd::AccumulateGenesis {
                                 signed_credit: signed_credit.clone(),
                                 sig: credit_sig_share,
                             }),
                             id: MessageId::new(),
-                        },
+                        }
+                        .into(),
                         dst: DstLocation::Section(
                             bootstrap.elder_state.section_public_key().into(),
                         ),

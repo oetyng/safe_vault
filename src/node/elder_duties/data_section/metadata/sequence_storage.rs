@@ -19,9 +19,9 @@ use sn_data_types::{
     SequencePublicPolicy, SequenceUser,
 };
 use sn_messaging::{
-    client::{CmdError, Message, MessageId, QueryResponse, SequenceRead, SequenceWrite},
+    client::{CmdError, QueryResponse, SequenceRead, SequenceWrite},
     location::User,
-    DstLocation, SrcLocation,
+    ClientMessage, DstLocation, MessageId, SrcLocation,
 };
 
 use std::fmt::{self, Display, Formatter};
@@ -109,12 +109,13 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetSequence(result),
                 id: MessageId::in_response_to(&msg_id),
                 query_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -176,12 +177,13 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetSequenceRange(result),
                 id: MessageId::in_response_to(&msg_id),
                 query_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -203,12 +205,13 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetSequenceLastEntry(result),
                 id: MessageId::in_response_to(&msg_id),
                 query_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -235,12 +238,13 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetSequenceOwner(result),
                 id: MessageId::in_response_to(&msg_id),
                 query_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -264,12 +268,13 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetSequenceUserPermissions(result),
                 id: MessageId::in_response_to(&msg_id),
                 query_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -296,12 +301,13 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetSequencePublicPolicy(result),
                 id: MessageId::in_response_to(&msg_id),
                 query_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -328,12 +334,13 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetSequencePrivatePolicy(result),
                 id: MessageId::in_response_to(&msg_id),
                 query_origin: SrcLocation::User(origin),
                 correlation_id: msg_id,
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -458,12 +465,13 @@ impl SequenceStorage {
             }
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::CmdError {
+            msg: ClientMessage::CmdError {
                 id: MessageId::new(),
                 error: CmdError::Data(error),
                 correlation_id: msg_id,
                 cmd_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: true,
         }))

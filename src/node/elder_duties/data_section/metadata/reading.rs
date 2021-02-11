@@ -12,40 +12,27 @@ use super::{
     blob_register::BlobRegister, elder_stores::ElderStores, map_storage::MapStorage,
     sequence_storage::SequenceStorage,
 };
-use crate::node::node_ops::NodeMessagingDuty;
-use crate::{Error, Result};
-use log::info;
+use crate::node::node_ops::{IntoNodeOp, NodeMessagingDuty, NodeOperation};
+use crate::Result;
 use sn_messaging::{
-    client::{BlobRead, DataQuery, MapRead, Message, MessageId, Query, SequenceRead},
+    client::{BlobRead, DataQuery, MapRead, SequenceRead},
     location::User,
+    MessageId,
 };
 
 pub(super) async fn get_result(
-    msg: Message,
+    query: DataQuery,
+    msg_id: MessageId,
     origin: User,
     stores: &ElderStores,
-) -> Result<NodeMessagingDuty> {
+) -> Result<NodeOperation> {
     use DataQuery::*;
-    let msg_id = msg.id();
-    // let origin = msg.origin;
-    // let proxies = msg.proxies;
-    let res = match msg {
-        Message::Query {
-            query: Query::Data(data_query),
-            ..
-        } => match &data_query {
-            Blob(read) => blob(read, stores.blob_register(), msg_id, origin).await,
-            Map(read) => map(read, stores.map_storage(), msg_id, origin).await,
-            Sequence(read) => sequence(read, stores.sequence_storage(), msg_id, origin).await,
-        },
-        _ => Err(Error::Logic(
-            "Unreachable pattern when reading data.".to_string(),
-        )),
-    };
-    if res.is_ok() {
-        info!("Read data queried by message: '{:?}' successfully!", msg_id);
+    match &query {
+        Blob(read) => blob(read, stores.blob_register(), msg_id, origin).await,
+        Map(read) => map(read, stores.map_storage(), msg_id, origin).await,
+        Sequence(read) => sequence(read, stores.sequence_storage(), msg_id, origin).await,
     }
-    res
+    .convert()
 }
 
 async fn blob(

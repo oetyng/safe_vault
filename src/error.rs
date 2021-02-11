@@ -8,7 +8,7 @@
 
 // use bls::PublicKey;
 use sn_data_types::{Error as DtError, PublicKey};
-use sn_messaging::client::{Error as ErrorMessage, MessageId};
+use sn_messaging::{client::Error as ErrorMessage, MessageId};
 use std::io;
 use thiserror::Error;
 #[allow(clippy::large_enum_variant)]

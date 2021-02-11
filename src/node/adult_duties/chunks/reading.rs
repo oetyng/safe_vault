@@ -9,10 +9,7 @@
 use super::chunk_storage::ChunkStorage;
 use crate::node::node_ops::NodeMessagingDuty;
 use crate::Result;
-use sn_messaging::{
-    client::{BlobRead, MessageId},
-    location::User,
-};
+use sn_messaging::{client::BlobRead, location::User, MessageId};
 
 /// Read operations on data chunks.
 

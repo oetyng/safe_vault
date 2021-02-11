@@ -7,12 +7,11 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{node::state_db::AgeGroup, utils, Config as NodeConfig, Error, Result};
-use bytes::Bytes;
 use ed25519_dalek::PublicKey as Ed25519PublicKey;
 use futures::lock::Mutex;
 use serde::Serialize;
 use sn_data_types::{PublicKey, Signature};
-use sn_messaging::{client::Message, DstLocation, SrcLocation};
+use sn_messaging::{DstLocation, Message, MessageType, SrcLocation};
 use sn_routing::{
     Config as RoutingConfig, Error as RoutingError, EventStream, Routing as RoutingNode,
     SectionProofChain,
@@ -126,14 +125,13 @@ impl Network {
         &mut self,
         src: SrcLocation,
         dst: DstLocation,
-        content: Bytes,
+        msg: Message,
     ) -> Result<(), RoutingError> {
-        self.routing
-            .lock()
-            .await
-            .send_message(src, dst, content)
-            .await
-        // Ok(())
+        let msg = match msg {
+            Message::Client(msg) => MessageType::ClientMessage(msg),
+            Message::Node(msg) => MessageType::NodeMessage(msg),
+        };
+        self.routing.lock().await.send_message(src, dst, msg).await
     }
 
     pub async fn set_joins_allowed(&mut self, joins_allowed: bool) -> Result<()> {
@@ -145,14 +143,14 @@ impl Network {
             .map_err(Error::Routing)
     }
 
-    pub async fn send_message_to_client(&self, peer_addr: SocketAddr, msg: Message) -> Result<()> {
-        self.routing
-            .lock()
-            .await
-            .send_message_to_client(peer_addr, msg)
-            .await
-            .map_err(Error::Routing)
-    }
+    // pub async fn send_message_to_client(&self, peer_addr: SocketAddr, msg: Message) -> Result<()> {
+    //     self.routing
+    //         .lock()
+    //         .await
+    //         .send_message_to_client(peer_addr, msg)
+    //         .await
+    //         .map_err(Error::Routing)
+    // }
 
     pub async fn our_history(&self) -> SectionProofChain {
         self.routing.lock().await.our_history().await

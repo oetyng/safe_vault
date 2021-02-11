@@ -12,15 +12,15 @@ mod writing;
 
 use crate::{
     node::node_ops::{NodeDuty, NodeMessagingDuty, NodeOperation},
-    AdultState, Error, NodeInfo, Result,
+    AdultState, NodeInfo, Result,
 };
 use chunk_storage::ChunkStorage;
-use log::{info, trace};
+use log::info;
 use sn_data_types::{Blob, BlobAddress};
 use sn_messaging::{
-    client::{DataQuery, Message, MessageId, NodeCmd, NodeDataCmd, Query},
+    client::{BlobRead, BlobWrite},
     location::User,
-    SrcLocation,
+    MessageId, SrcLocation,
 };
 use std::{
     collections::BTreeSet,
@@ -41,27 +41,22 @@ impl Chunks {
             chunk_storage: ChunkStorage::new(&node_info, adult_state).await?,
         })
     }
+    pub async fn read(
+        &mut self,
+        read: &BlobRead,
+        msg_id: MessageId,
+        origin: User,
+    ) -> Result<NodeMessagingDuty> {
+        reading::get_result(read, msg_id, origin, &self.chunk_storage).await
+    }
 
-    pub async fn receive_msg(&mut self, msg: Message, origin: User) -> Result<NodeMessagingDuty> {
-        trace!(
-            "{}: Received ({:?} from src [..]", // {:?}
-            self,
-            msg.id(),
-        );
-        match &msg {
-            Message::Query {
-                query: Query::Data(DataQuery::Blob(ref read)),
-                ..
-            } => reading::get_result(read, msg.id(), origin, &self.chunk_storage).await,
-            Message::NodeCmd {
-                cmd: NodeCmd::Data(NodeDataCmd::Blob(write)),
-                ..
-            } => writing::get_result(write, msg.clone(), origin, &mut self.chunk_storage).await,
-            _ => Err(Error::Logic(format!(
-                "{:?}: Could not receive msg as Adult",
-                msg.id()
-            ))),
-        }
+    pub async fn write(
+        &mut self,
+        write: &BlobWrite,
+        msg_id: MessageId,
+        origin: User,
+    ) -> Result<NodeMessagingDuty> {
+        writing::get_result(write, msg_id, origin, &mut self.chunk_storage).await
     }
 
     pub async fn check_storage(&self) -> Result<NodeOperation> {

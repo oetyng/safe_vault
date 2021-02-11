@@ -14,11 +14,12 @@ use crate::{
 };
 use crate::{Network, Result};
 use log::error;
-use sn_messaging::{client::Message, DstLocation, SrcLocation};
+use sn_messaging::{DstLocation, Message, SrcLocation};
 use sn_routing::XorName;
 
 /// Sending of messages
 /// to nodes and clients in the network.
+/// Msg type + dst decides how it is handled.
 pub struct Messaging {
     network: Network,
 }
@@ -35,7 +36,7 @@ impl Messaging {
         use NodeMessagingDuty::*;
         match duty {
             Send(msg) => self.send(msg).await,
-            SendToAdults { targets, msg } => self.send_to_nodes(targets, &msg).await,
+            SendToAdults { targets, msg } => self.send_to_nodes(targets, msg).await,
             NoOp => Ok(NodeOperation::NoOp),
         }
     }
@@ -46,15 +47,13 @@ impl Messaging {
         } else {
             SrcLocation::Node(self.network.our_name().await)
         };
-        let result = self
-            .network
-            .send_message(src, msg.dst, msg.msg.serialize()?)
-            .await;
+        let id = msg.id();
+        let result = self.network.send_message(src, msg.dst, msg.msg).await;
 
         result.map_or_else(
             |err| {
                 error!("Unable to send msg: {:?}", err);
-                Err(Error::Logic(format!("Unable to send msg: {:?}", msg.id())))
+                Err(Error::Logic(format!("Unable to send msg: {:?}", id)))
             },
             |()| Ok(NodeOperation::NoOp),
         )
@@ -63,16 +62,15 @@ impl Messaging {
     async fn send_to_nodes(
         &mut self,
         targets: BTreeSet<XorName>,
-        msg: &Message,
+        msg: Message,
     ) -> Result<NodeOperation> {
         let name = self.network.our_name().await;
-        let bytes = &msg.serialize()?;
         for target in targets {
             self.network
                 .send_message(
                     SrcLocation::Node(name),
                     DstLocation::Node(XorName(target.0)),
-                    bytes.clone(),
+                    msg.clone(),
                 )
                 .await
                 .map_or_else(

@@ -33,13 +33,20 @@ use sn_data_types::{
     TransferAgreementProof, TransferPropagated, WalletInfo,
 };
 use sn_messaging::{
-    client::{
-        Cmd, CmdError, Error as ErrorMessage, Event, Message, MessageId, NodeCmd, NodeCmdError,
-        NodeEvent, NodeQuery, NodeQueryResponse, NodeTransferCmd, NodeTransferError,
-        NodeTransferQuery, NodeTransferQueryResponse, QueryResponse, TransferError,
-    },
+    client::{Cmd, CmdError, Error as ErrorMessage, Event, QueryResponse, TransferError},
     location::User,
-    DstLocation, SrcLocation,
+    node::{
+        NodeCmd,
+        NodeCmdError,
+        NodeEvent,
+        NodeQuery,
+        NodeQueryResponse,
+        NodeTransferCmd,
+        NodeTransferError,
+        NodeTransferQuery,
+        NodeTransferQueryResponse, // Error as ErrorMessage,
+    },
+    ClientMessage, DstLocation, MessageId, NodeMessage, SrcLocation,
 };
 use std::fmt::{self, Display, Formatter};
 use xor_name::Prefix;
@@ -100,10 +107,11 @@ impl Transfers {
         // prepare replica init
         let pub_key = PublicKey::Bls(self.replicas.replicas_pk_set().public_key());
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::NodeQuery {
-                query: NodeQuery::Transfers(NodeTransferQuery::GetReplicaEvents(pub_key)),
+            msg: NodeMessage::NodeQuery {
+                query: NodeQuery::Transfers(NodeTransferQuery::GetReplicaEvents),
                 id: MessageId::new(),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(pub_key.into()),
             to_be_aggregated: false,
         })
@@ -152,10 +160,6 @@ impl Transfers {
     ) -> Result<NodeOperation> {
         use TransferQuery::*;
         let result = match query {
-            CatchUpWithSectionWallet(wallet_id) => {
-                self.catchup_with_section_wallet(*wallet_id, msg_id, origin)
-                    .await
-            }
             GetNewSectionWallet(wallet_id) => {
                 self.get_new_section_wallet(*wallet_id, msg_id, origin)
                     .await
@@ -234,9 +238,9 @@ impl Transfers {
     /// Makes sure the payment contained
     /// within a data write, is credited
     /// to the section funds.
-    async fn process_payment(&self, msg: &Message) -> Result<NodeMessagingDuty> {
+    async fn process_payment(&self, msg: &ClientMessage) -> Result<NodeMessagingDuty> {
         let (payment, num_bytes, dst_address) = match &msg {
-            Message::Cmd {
+            ClientMessage::Cmd {
                 cmd: Cmd::Data { payment, cmd },
                 ..
             } => (
@@ -258,12 +262,13 @@ impl Transfers {
             warn!("Payment: recipient is not section");
             let origin = SrcLocation::User(User::EndUser(payment.sender()));
             return Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                msg: Message::CmdError {
+                msg: ClientMessage::CmdError {
                     error: CmdError::Transfer(TransferRegistration(ErrorMessage::NoSuchRecipient)),
                     id: MessageId::new(),
                     correlation_id: msg.id(),
                     cmd_origin: origin,
-                },
+                }
+                .into(),
                 dst: origin.to_dst(),
                 to_be_aggregated: false,
             }));
@@ -295,14 +300,15 @@ impl Transfers {
                     // todo, better error, like `TooLowPayment`
                     let origin = SrcLocation::User(User::EndUser(payment.sender()));
                     return Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                        msg: Message::CmdError {
+                        msg: ClientMessage::CmdError {
                             error: CmdError::Transfer(TransferRegistration(
                                 ErrorMessage::InsufficientBalance,
                             )),
                             id: MessageId::new(),
                             correlation_id: msg.id(),
                             cmd_origin: origin,
-                        },
+                        }
+                        .into(),
                         dst: origin.to_dst(),
                         to_be_aggregated: false,
                     }));
@@ -311,7 +317,7 @@ impl Transfers {
                 // consider having the section actor be
                 // informed of this transfer as well..
                 Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                    msg: msg.clone(),
+                    msg: msg.clone().into(),
                     dst: DstLocation::Section(dst_address),
                     to_be_aggregated: true,
                 }))
@@ -320,14 +326,15 @@ impl Transfers {
                 warn!("Payment: registration or propagation failed: {}", e);
                 let origin = SrcLocation::User(User::EndUser(payment.sender()));
                 Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                    msg: Message::CmdError {
+                    msg: ClientMessage::CmdError {
                         error: CmdError::Transfer(TransferRegistration(
                             ErrorMessage::PaymentFailed,
                         )),
                         id: MessageId::new(),
                         correlation_id: msg.id(),
                         cmd_origin: origin,
-                    },
+                    }
+                    .into(),
                     dst: origin.to_dst(),
                     to_be_aggregated: false,
                 }))
@@ -351,15 +358,15 @@ impl Transfers {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         use NodeQueryResponse::*;
-        use NodeTransferQueryResponse::*;
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::NodeQueryResponse {
-                response: Transfers(GetReplicaEvents(result)),
+            msg: NodeMessage::NodeQueryResponse {
+                response: Transfers(NodeTransferQueryResponse::GetReplicaEvents(result)),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin,
-            },
+            }
+            .into(),
             dst: query_origin.to_dst(),
             to_be_aggregated: false,
         }))
@@ -379,12 +386,13 @@ impl Transfers {
         info!("Got StoreCost {:?}", result);
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetStoreCost(Ok(result)),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: origin,
-            },
+            }
+            .into(),
             dst: origin.to_dst(),
             to_be_aggregated: false,
         }))
@@ -400,12 +408,13 @@ impl Transfers {
         let pk_set = self.replicas.replicas_pk_set();
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetReplicaKeys(Ok(pk_set)),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: origin,
-            },
+            }
+            .into(),
             dst: origin.to_dst(),
             to_be_aggregated: false,
         }))
@@ -426,44 +435,15 @@ impl Transfers {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetBalance(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: origin,
-            },
+            }
+            .into(),
             dst: origin.to_dst(),
             to_be_aggregated: false,
-        }))
-    }
-
-    async fn catchup_with_section_wallet(
-        &self,
-        wallet_id: PublicKey,
-        msg_id: MessageId,
-        origin: SrcLocation,
-    ) -> Result<NodeMessagingDuty> {
-        info!("Handling CatchUpWithSectionWallet query");
-        use NodeQueryResponse::*;
-        use NodeTransferQueryResponse::*;
-        // todo: validate signature
-        let result = match self.replicas.history(wallet_id).await {
-            Ok(history) => Ok(WalletInfo {
-                replicas: self.replicas.replicas_pk_set(),
-                history,
-            }),
-            Err(error) => Err(convert_to_error_message(error)?),
-        };
-
-        Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::NodeQueryResponse {
-                response: Transfers(CatchUpWithSectionWallet(result)),
-                id: MessageId::in_response_to(&msg_id),
-                correlation_id: msg_id,
-                query_origin: origin,
-            },
-            dst: origin.to_dst(),
-            to_be_aggregated: false, // this has to be sorted out by recipient..
         }))
     }
 
@@ -475,7 +455,6 @@ impl Transfers {
     ) -> Result<NodeMessagingDuty> {
         info!("Handling GetNewSectionWallet query");
         use NodeQueryResponse::*;
-        use NodeTransferQueryResponse::*;
         // todo: validate signature
         let result = match self.replicas.history(wallet_id).await {
             Ok(history) => Ok(WalletInfo {
@@ -489,12 +468,13 @@ impl Transfers {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::NodeQueryResponse {
-                response: Transfers(GetNewSectionWallet(result)),
+            msg: NodeMessage::NodeQueryResponse {
+                response: Transfers(NodeTransferQueryResponse::GetNewSectionWallet(result)),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: origin,
-            },
+            }
+            .into(),
             dst: origin.to_dst(),
             to_be_aggregated: false, // this has to be sorted out by recipient..
         }))
@@ -516,12 +496,13 @@ impl Transfers {
             .map_err(|_e| ErrorMessage::NoHistoryForPublicKey(*wallet_id));
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetHistory(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: origin,
-            },
+            }
+            .into(),
             dst: origin.to_dst(),
             to_be_aggregated: false, // this has to be sorted out by recipient..
         }))
@@ -538,14 +519,14 @@ impl Transfers {
     ) -> Result<NodeMessagingDuty> {
         debug!("Validating a transfer from msg_id: {:?}", msg_id);
         let msg = match self.replicas.validate(transfer).await {
-            Ok(event) => Message::Event {
+            Ok(event) => ClientMessage::Event {
                 event: Event::TransferValidated { event },
                 id: MessageId::new(),
                 correlation_id: msg_id,
             },
             Err(e) => {
                 let message_error = convert_to_error_message(e)?;
-                Message::CmdError {
+                ClientMessage::CmdError {
                     id: MessageId::new(),
                     error: CmdError::Transfer(TransferError::TransferValidation(message_error)),
                     correlation_id: msg_id,
@@ -554,7 +535,7 @@ impl Transfers {
             }
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg,
+            msg: msg.into(),
             dst: origin.to_dst(),
             to_be_aggregated: false,
         }))
@@ -571,7 +552,7 @@ impl Transfers {
     ) -> Result<NodeMessagingDuty> {
         let msg = match self.replicas.propose_validation(&transfer).await {
             Ok(None) => return Ok(NodeMessagingDuty::NoOp),
-            Ok(Some(event)) => Message::NodeEvent {
+            Ok(Some(event)) => NodeMessage::NodeEvent {
                 event: NodeEvent::SectionPayoutValidated(event),
                 id: MessageId::new(),
                 correlation_id: msg_id,
@@ -579,7 +560,7 @@ impl Transfers {
             Err(e) => {
                 let message_error = convert_to_error_message(e)?;
 
-                Message::NodeCmdError {
+                NodeMessage::NodeCmdError {
                     id: MessageId::new(),
                     error: NodeCmdError::Transfers(NodeTransferError::TransferPropagation(
                         message_error,
@@ -590,7 +571,7 @@ impl Transfers {
             }
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg,
+            msg: msg.into(),
             dst: origin.to_dst(),
             to_be_aggregated: false,
         }))
@@ -605,15 +586,15 @@ impl Transfers {
         //origin: Address,
     ) -> Result<NodeMessagingDuty> {
         use NodeCmd::*;
-        use NodeTransferCmd::*;
         match self.replicas.register(proof).await {
             Ok(event) => {
                 let location = event.transfer_proof.recipient().into();
                 Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                    msg: Message::NodeCmd {
-                        cmd: Transfers(PropagateTransfer(event.transfer_proof)),
+                    msg: NodeMessage::NodeCmd {
+                        cmd: Transfers(NodeTransferCmd::PropagateTransfer(event.transfer_proof)),
                         id: MessageId::in_response_to(&msg_id),
-                    },
+                    }
+                    .into(),
                     dst: DstLocation::Section(location),
                     to_be_aggregated: true, // not necessary, but will be slimmer
                 }))
@@ -621,14 +602,15 @@ impl Transfers {
             Err(e) => {
                 let message_error = convert_to_error_message(e)?;
                 Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                    msg: Message::CmdError {
+                    msg: ClientMessage::CmdError {
                         error: CmdError::Transfer(TransferError::TransferRegistration(
                             message_error,
                         )),
                         id: MessageId::in_response_to(&msg_id),
                         correlation_id: msg_id,
                         cmd_origin: SrcLocation::User(User::EndUser(proof.sender())),
-                    },
+                    }
+                    .into(),
                     dst: DstLocation::User(User::EndUser(proof.sender())),
                     to_be_aggregated: true,
                 }))
@@ -646,7 +628,6 @@ impl Transfers {
     ) -> Result<NodeOperation> {
         use NodeCmd::*;
         use NodeEvent::*;
-        use NodeTransferCmd::*;
         match self.replicas.register(proof).await {
             Ok(event) => {
                 let mut ops: Vec<NodeOperation> = vec![];
@@ -654,14 +635,15 @@ impl Transfers {
                 let location = event.transfer_proof.sender().into();
                 ops.push(
                     NodeMessagingDuty::Send(OutgoingMsg {
-                        msg: Message::NodeEvent {
+                        msg: NodeMessage::NodeEvent {
                             event: SectionPayoutRegistered {
                                 from: event.transfer_proof.sender(),
                                 to: event.transfer_proof.recipient(),
                             },
                             id: MessageId::in_response_to(&msg_id),
                             correlation_id: msg_id,
-                        },
+                        }
+                        .into(),
                         dst: DstLocation::Section(location),
                         to_be_aggregated: true,
                     })
@@ -671,10 +653,13 @@ impl Transfers {
                 let location = event.transfer_proof.recipient().into();
                 ops.push(
                     NodeMessagingDuty::Send(OutgoingMsg {
-                        msg: Message::NodeCmd {
-                            cmd: Transfers(PropagateTransfer(event.transfer_proof)),
+                        msg: NodeMessage::NodeCmd {
+                            cmd: Transfers(NodeTransferCmd::PropagateTransfer(
+                                event.transfer_proof,
+                            )),
                             id: MessageId::new(),
-                        },
+                        }
+                        .into(),
                         dst: DstLocation::Section(location),
                         to_be_aggregated: true, // not necessary, but will be slimmer
                     })
@@ -685,14 +670,15 @@ impl Transfers {
             Err(e) => {
                 let message_error = convert_to_error_message(e)?;
                 Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                    msg: Message::NodeCmdError {
+                    msg: NodeMessage::NodeCmdError {
                         error: NodeCmdError::Transfers(
                             NodeTransferError::SectionPayoutRegistration(message_error),
                         ),
                         id: MessageId::in_response_to(&msg_id),
                         correlation_id: msg_id,
                         cmd_origin: origin,
-                    },
+                    }
+                    .into(),
                     dst: origin.to_dst(),
                     to_be_aggregated: true,
                 })
@@ -711,14 +697,15 @@ impl Transfers {
         msg_id: MessageId,
         origin: SrcLocation,
     ) -> Result<NodeMessagingDuty> {
-        use NodeTransferError::*;
         // We will just validate the proofs and then apply the event.
         let msg = match self.replicas.receive_propagated(credit_proof).await {
             Ok(_) => return Ok(NodeMessagingDuty::NoOp),
             Err(Error::NetworkData(error)) => {
                 let message_error = convert_dt_error_to_error_message(error)?;
-                Message::NodeCmdError {
-                    error: NodeCmdError::Transfers(TransferPropagation(message_error)),
+                NodeMessage::NodeCmdError {
+                    error: NodeCmdError::Transfers(NodeTransferError::TransferPropagation(
+                        message_error,
+                    )),
                     id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
                     cmd_origin: origin,
@@ -727,7 +714,7 @@ impl Transfers {
             Err(_e) => unimplemented!("receive_propagated"),
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg,
+            msg: msg.into(),
             dst: origin.to_dst(),
             to_be_aggregated: true,
         }))

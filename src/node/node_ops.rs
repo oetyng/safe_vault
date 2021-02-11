@@ -16,9 +16,7 @@ use sn_data_types::{
     WalletInfo,
 };
 use sn_messaging::{
-    client::{Message, MessageId},
-    location::User,
-    DstLocation, SrcLocation,
+    location::User, ClientMessage, DstLocation, Message, MessageId, NodeMessage, SrcLocation,
 };
 use std::fmt::Formatter;
 
@@ -199,19 +197,6 @@ impl Debug for NodeDuty {
 // --------------- Messaging ---------------
 
 #[derive(Debug, Clone)]
-pub struct ReceivedMsg {
-    pub msg: Message,
-    pub src: SrcLocation,
-    pub dst: DstLocation,
-}
-
-impl ReceivedMsg {
-    pub fn id(&self) -> MessageId {
-        self.msg.id()
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct OutgoingMsg {
     pub msg: Message,
     pub dst: DstLocation,
@@ -221,6 +206,24 @@ pub struct OutgoingMsg {
 impl OutgoingMsg {
     pub fn id(&self) -> MessageId {
         self.msg.id()
+    }
+
+    /// Node-to-Client comms
+    pub fn client(msg: ClientMessage, dst: DstLocation, to_be_aggregated: bool) -> Self {
+        OutgoingMsg {
+            msg: Message::Client(msg),
+            dst,
+            to_be_aggregated,
+        }
+    }
+
+    /// Node-to-Node comms
+    pub fn node(msg: NodeMessage, dst: DstLocation, to_be_aggregated: bool) -> Self {
+        OutgoingMsg {
+            msg: Message::Node(msg),
+            dst,
+            to_be_aggregated,
+        }
     }
 }
 
@@ -342,13 +345,6 @@ impl Into<NodeOperation> for AdultDuty {
 /// Duties only run as a Key section.
 #[derive(Debug)]
 pub enum KeySectionDuty {
-    /// Incoming user msgs
-    /// are to be evaluated and
-    /// sent to their respective module.
-    EvaluateUserMsg {
-        msg: Message,
-        user: User,
-    },
     /// Transfers of tokens between keys, hence also payment for data writes.
     RunAsTransfers(TransferDuty),
     NoOp,
@@ -371,6 +367,7 @@ impl Into<NodeOperation> for KeySectionDuty {
 
 /// Duties only run as a Data section.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum DataSectionDuty {
     /// Metadata is the info about
     /// data types structures, ownership
@@ -393,15 +390,18 @@ pub enum DataSectionDuty {
 /// chunks, and are then relayed to
 /// Adults (i.e. chunk holders).
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum MetadataDuty {
     /// Reads.
     ProcessRead {
-        msg: Message,
+        query: sn_messaging::client::DataQuery,
+        id: MessageId,
         origin: User,
     },
     /// Writes.
     ProcessWrite {
-        msg: Message,
+        cmd: sn_messaging::client::DataCmd,
+        id: MessageId,
         origin: User,
     },
     NoOp,
@@ -425,11 +425,20 @@ impl Into<NodeOperation> for MetadataDuty {
 
 /// Chunk storage and retrieval is done at Adults.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum ChunkStoreDuty {
     /// Reads.
-    ReadChunk(ReceivedMsg),
+    ReadChunk {
+        read: sn_messaging::client::BlobRead,
+        id: MessageId,
+        origin: SrcLocation,
+    },
     /// Writes.
-    WriteChunk(ReceivedMsg),
+    WriteChunk {
+        write: sn_messaging::client::BlobWrite,
+        id: MessageId,
+        origin: SrcLocation,
+    },
     NoOp,
 }
 
@@ -487,8 +496,8 @@ pub enum ChunkReplicationCmd {
 /// Elders are responsible for the duties of
 /// keeping track of rewards, and issuing
 /// payouts from the section account.
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum RewardDuty {
     ///
     ProcessQuery {
@@ -566,6 +575,9 @@ pub enum RewardQuery {
         /// The id of the node at its new section (i.e. this one).
         new_node_id: XorName,
     },
+    /// When a new Section Actor share joins,
+    /// it queries the other shares for the section wallet history.
+    GetSectionWalletHistory,
 }
 
 impl Into<NodeOperation> for RewardDuty {
@@ -627,8 +639,6 @@ impl Into<NodeOperation> for TransferDuty {
 #[derive(Debug)]
 pub enum TransferQuery {
     /// Get section actor transfers.
-    CatchUpWithSectionWallet(PublicKey),
-    /// Get section actor transfers.
     GetNewSectionWallet(PublicKey),
     /// Get the PublicKeySet for replicas of a given PK
     GetReplicaKeys(PublicKey),
@@ -658,7 +668,7 @@ pub enum TransferCmd {
     /// Initiates a new Replica with the
     /// state of existing Replicas in the group.
     InitiateReplica(Vec<ReplicaEvent>),
-    ProcessPayment(Message),
+    ProcessPayment(ClientMessage),
     #[cfg(feature = "simulated-payouts")]
     /// Cmd to simulate a farming payout
     SimulatePayout(Transfer),

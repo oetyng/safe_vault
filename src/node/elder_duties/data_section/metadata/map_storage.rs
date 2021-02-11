@@ -18,9 +18,9 @@ use sn_data_types::{
     PublicKey, Result as NdResult,
 };
 use sn_messaging::{
-    client::{CmdError, MapRead, MapWrite, Message, MessageId, QueryResponse},
+    client::{CmdError, MapRead, MapWrite, QueryResponse},
     location::User,
-    DstLocation, SrcLocation,
+    ClientMessage, DstLocation, MessageId, SrcLocation,
 };
 
 use std::fmt::{self, Display, Formatter};
@@ -225,12 +225,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetMap(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -252,12 +253,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetMapShell(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -279,12 +281,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetMapVersion(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -316,12 +319,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::GetMapValue(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -343,12 +347,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::ListMapKeys(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -371,12 +376,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::ListMapValues(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -399,12 +405,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::ListMapEntries(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -426,12 +433,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::ListMapPermissions(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -457,12 +465,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 response: QueryResponse::ListMapUserPermissions(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::Section(origin.name()),
             to_be_aggregated: false,
         }))
@@ -479,12 +488,13 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
             info!("MapStorage: Writing chunk FAILED!");
 
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                msg: Message::CmdError {
+                msg: ClientMessage::CmdError {
                     error: CmdError::Data(messaging_error),
                     id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
                     cmd_origin: SrcLocation::User(origin),
-                },
+                }
+                .into(),
                 dst: DstLocation::Section(origin.name()),
                 to_be_aggregated: true, // this needs more consideration...
             }))

@@ -18,12 +18,10 @@ use crate::{
 use log::{error, info};
 use sn_data_types::{Blob, BlobAddress};
 use sn_messaging::{
-    client::{
-        CmdError, Error as ErrorMessage, Message, MessageId, NodeDataQuery, NodeDataQueryResponse,
-        NodeQuery, NodeQueryResponse, QueryResponse,
-    },
+    client::{CmdError, Error as ErrorMessage, QueryResponse},
     location::User,
-    DstLocation, SrcLocation,
+    node::{NodeDataQueryResponse, NodeQuery, NodeQueryResponse, NodeSystemQuery},
+    ClientMessage, DstLocation, MessageId, NodeMessage, SrcLocation,
 };
 use std::{
     collections::BTreeSet,
@@ -54,12 +52,13 @@ impl ChunkStorage {
     ) -> Result<NodeMessagingDuty> {
         if let Err(error) = self.try_store(data, origin).await {
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                msg: Message::CmdError {
+                msg: ClientMessage::CmdError {
                     error: CmdError::Data(convert_to_error_message(error)?),
                     id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
                     cmd_origin: SrcLocation::User(origin),
-                },
+                }
+                .into(),
                 dst: DstLocation::User(origin),
                 to_be_aggregated: true,
             }))
@@ -143,12 +142,13 @@ impl ChunkStorage {
             .get(address)
             .map_err(|_| ErrorMessage::NoSuchData);
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ClientMessage::QueryResponse {
                 id: MessageId::in_response_to(&msg_id),
                 response: QueryResponse::GetBlob(result),
                 correlation_id: msg_id,
                 query_origin: SrcLocation::User(origin),
-            },
+            }
+            .into(),
             dst: DstLocation::User(origin),
             to_be_aggregated: false,
         }))
@@ -158,24 +158,23 @@ impl ChunkStorage {
         &self,
         address: BlobAddress,
         current_holders: BTreeSet<XorName>,
-        //section_authority: MsgSender,
         //_msg_id: MessageId,
         //_origin: MsgSender,
     ) -> Result<NodeMessagingDuty> {
-        let msg = Message::NodeQuery {
-            query: NodeQuery::Data(NodeDataQuery::GetChunk {
-                //section_authority,
+        let msg = NodeMessage::NodeQuery {
+            query: NodeQuery::System(NodeSystemQuery::GetChunk {
                 address,
                 new_holder: self.node_name,
                 current_holders: current_holders.clone(),
             }),
             id: MessageId::new(),
-        };
-        info!("Sending NodeDataQuery::GetChunk to existing holders");
+        }
+        .into();
+        info!("Sending NodeSystemQuery::GetChunk to existing holders");
 
         Ok(NodeMessagingDuty::SendToAdults {
-            targets: current_holders,
             msg,
+            targets: current_holders,
         })
     }
 
@@ -192,12 +191,13 @@ impl ChunkStorage {
         };
 
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::NodeQueryResponse {
+            msg: NodeMessage::NodeQueryResponse {
                 response: NodeQueryResponse::Data(NodeDataQueryResponse::GetChunk(result)),
                 id: MessageId::new(),
                 correlation_id: msg_id,
                 query_origin: origin,
-            },
+            }
+            .into(),
             dst: origin.to_dst(),
             to_be_aggregated: true,
         }))
@@ -280,12 +280,13 @@ impl ChunkStorage {
 
         if let Err(error) = result {
             return Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                msg: Message::CmdError {
+                msg: ClientMessage::CmdError {
                     error: CmdError::Data(error),
                     id: MessageId::new(),
                     correlation_id: msg_id,
                     cmd_origin: SrcLocation::User(origin),
-                },
+                }
+                .into(),
                 dst: DstLocation::User(origin),
                 to_be_aggregated: true,
             }));
