@@ -52,7 +52,7 @@ impl ReceivedMsgAnalysis {
         }
     }
 
-    pub fn evaluate_response_to_client(
+    pub fn evaluate_accumulated_response_to_client(
         &self,
         msg: ClientMessage,
         dst: DstLocation,

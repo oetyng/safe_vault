@@ -116,7 +116,7 @@ impl SequenceStorage {
                 correlation_id: msg_id,
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -188,7 +188,7 @@ impl SequenceStorage {
                 correlation_id: msg_id,
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -216,7 +216,7 @@ impl SequenceStorage {
                 correlation_id: msg_id,
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -249,7 +249,7 @@ impl SequenceStorage {
                 correlation_id: msg_id,
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -279,7 +279,7 @@ impl SequenceStorage {
                 correlation_id: msg_id,
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -312,7 +312,7 @@ impl SequenceStorage {
                 correlation_id: msg_id,
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -345,7 +345,7 @@ impl SequenceStorage {
                 correlation_id: msg_id,
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -470,14 +470,14 @@ impl SequenceStorage {
         };
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
             msg: ClientMessage::CmdError {
-                id: MessageId::new(),
+                id: MessageId::in_response_to(&msg_id),
                 error: CmdError::Data(error),
                 correlation_id: msg_id,
                 cmd_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
-            to_be_aggregated: true,
+            to_be_aggregated: false, // TODO: to_be_aggregated: true,
         }))
     }
 }

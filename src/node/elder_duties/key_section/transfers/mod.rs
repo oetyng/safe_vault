@@ -276,13 +276,13 @@ impl Transfers {
             return Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: ClientMessage::CmdError {
                     error: CmdError::Transfer(TransferRegistration(ErrorMessage::NoSuchRecipient)),
-                    id: MessageId::new(),
+                    id: MessageId::in_response_to(&msg.id()),
                     correlation_id: msg.id(),
                     cmd_origin: origin,
                 }
                 .into(),
                 dst: origin.to_dst(),
-                to_be_aggregated: false,
+                to_be_aggregated: false, // TODO: to_be_aggregated: true,
             }));
         }
         let registration = self.replicas.register(&payment).await;
@@ -320,13 +320,13 @@ impl Transfers {
                             error: CmdError::Transfer(TransferRegistration(
                                 ErrorMessage::InsufficientBalance,
                             )),
-                            id: MessageId::new(),
+                            id: MessageId::in_response_to(&msg.id()),
                             correlation_id: msg.id(),
                             cmd_origin: origin,
                         }
                         .into(),
                         dst: origin.to_dst(),
-                        to_be_aggregated: false,
+                        to_be_aggregated: false, // TODO: to_be_aggregated: true,
                     }));
                 }
                 info!("Payment: forwarding data..");
@@ -342,7 +342,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: DstLocation::Section(dst_address),
-                    to_be_aggregated: true,
+                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
                 }))
             }
             Err(e) => {
@@ -353,13 +353,13 @@ impl Transfers {
                         error: CmdError::Transfer(TransferRegistration(
                             ErrorMessage::PaymentFailed,
                         )),
-                        id: MessageId::new(),
+                        id: MessageId::in_response_to(&msg.id()),
                         correlation_id: msg.id(),
                         cmd_origin: origin,
                     }
                     .into(),
                     dst: origin.to_dst(),
-                    to_be_aggregated: false,
+                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
                 }))
             }
         }
@@ -439,7 +439,7 @@ impl Transfers {
             }
             .into(),
             dst: origin.to_dst(),
-            to_be_aggregated: false,
+            to_be_aggregated: false, // TODO: to_be_aggregated: true,
         }))
     }
 
@@ -541,27 +541,32 @@ impl Transfers {
         origin: SrcLocation,
     ) -> Result<NodeMessagingDuty> {
         debug!("Validating a transfer from msg_id: {:?}", msg_id);
-        let msg = match self.replicas.validate(transfer).await {
-            Ok(event) => ClientMessage::Event {
-                event: Event::TransferValidated { event },
-                id: MessageId::new(),
-                correlation_id: msg_id,
-            },
+        match self.replicas.validate(transfer).await {
+            Ok(event) => Ok(NodeMessagingDuty::Send(OutgoingMsg {
+                msg: ClientMessage::Event {
+                    event: Event::TransferValidated { event },
+                    id: MessageId::new(),
+                    correlation_id: msg_id,
+                }
+                .into(),
+                dst: origin.to_dst(),
+                to_be_aggregated: false,
+            })),
             Err(e) => {
                 let message_error = convert_to_error_message(e)?;
-                ClientMessage::CmdError {
-                    id: MessageId::new(),
-                    error: CmdError::Transfer(TransferError::TransferValidation(message_error)),
-                    correlation_id: msg_id,
-                    cmd_origin: origin,
-                }
+                Ok(NodeMessagingDuty::Send(OutgoingMsg {
+                    msg: ClientMessage::CmdError {
+                        id: MessageId::in_response_to(&msg_id),
+                        error: CmdError::Transfer(TransferError::TransferValidation(message_error)),
+                        correlation_id: msg_id,
+                        cmd_origin: origin,
+                    }
+                    .into(),
+                    dst: origin.to_dst(),
+                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                }))
             }
-        };
-        Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: msg.into(),
-            dst: origin.to_dst(),
-            to_be_aggregated: false,
-        }))
+        }
     }
 
     /// This validation will render a signature over the
@@ -573,31 +578,35 @@ impl Transfers {
         msg_id: MessageId,
         origin: SrcLocation,
     ) -> Result<NodeMessagingDuty> {
-        let msg = match self.replicas.propose_validation(&transfer).await {
+        match self.replicas.propose_validation(&transfer).await {
             Ok(None) => return Ok(NodeMessagingDuty::NoOp),
-            Ok(Some(event)) => NodeMessage::NodeEvent {
-                event: NodeEvent::SectionPayoutValidated(event),
-                id: MessageId::new(),
-                correlation_id: msg_id,
-            },
+            Ok(Some(event)) => Ok(NodeMessagingDuty::Send(OutgoingMsg {
+                msg: NodeMessage::NodeEvent {
+                    event: NodeEvent::SectionPayoutValidated(event),
+                    id: MessageId::new(),
+                    correlation_id: msg_id,
+                }
+                .into(),
+                dst: origin.to_dst(),
+                to_be_aggregated: false,
+            })),
             Err(e) => {
                 let message_error = convert_to_error_message(e)?;
-
-                NodeMessage::NodeCmdError {
-                    id: MessageId::new(),
-                    error: NodeCmdError::Transfers(NodeTransferError::TransferPropagation(
-                        message_error,
-                    )), // TODO: SHOULD BE TRANSFERVALIDATION
-                    correlation_id: msg_id,
-                    cmd_origin: origin,
-                }
+                Ok(NodeMessagingDuty::Send(OutgoingMsg {
+                    msg: NodeMessage::NodeCmdError {
+                        id: MessageId::in_response_to(&msg_id),
+                        error: NodeCmdError::Transfers(NodeTransferError::TransferPropagation(
+                            message_error,
+                        )), // TODO: SHOULD BE TRANSFERVALIDATION
+                        correlation_id: msg_id,
+                        cmd_origin: origin,
+                    }
+                    .into(),
+                    dst: origin.to_dst(),
+                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                }))
             }
-        };
-        Ok(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: msg.into(),
-            dst: origin.to_dst(),
-            to_be_aggregated: false,
-        }))
+        }
     }
 
     /// Registration of a transfer is requested,
@@ -619,7 +628,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: DstLocation::Section(location),
-                    to_be_aggregated: true, // not necessary, but will be slimmer
+                    to_be_aggregated: false, // TODO: to_be_aggregated: true, // not necessary, but will be slimmer
                 }))
             }
             Err(e) => {
@@ -635,7 +644,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: DstLocation::EndUser(EndUser::AllClients(proof.sender())),
-                    to_be_aggregated: true,
+                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
                 }))
             }
         }
@@ -668,7 +677,7 @@ impl Transfers {
                         }
                         .into(),
                         dst: DstLocation::Section(location),
-                        to_be_aggregated: true,
+                        to_be_aggregated: false, // TODO: to_be_aggregated: true,
                     })
                     .into(),
                 );
@@ -684,7 +693,7 @@ impl Transfers {
                         }
                         .into(),
                         dst: DstLocation::Section(location),
-                        to_be_aggregated: true, // not necessary, but will be slimmer
+                        to_be_aggregated: false, // TODO: to_be_aggregated: true, // not necessary, but will be slimmer
                     })
                     .into(),
                 );
@@ -703,7 +712,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: origin.to_dst(),
-                    to_be_aggregated: true,
+                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
                 })
                 .into())
             }
@@ -739,7 +748,7 @@ impl Transfers {
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
             msg: msg.into(),
             dst: origin.to_dst(),
-            to_be_aggregated: true,
+            to_be_aggregated: false, // TODO: to_be_aggregated: true,
         }))
     }
 

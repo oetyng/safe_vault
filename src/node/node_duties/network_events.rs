@@ -106,13 +106,13 @@ impl NetworkEvents {
                             self.analysis.evaluate_msg_from_client(msg, origin)
                         }
                         SrcLocation::Section(_) => {
-                            self.analysis.evaluate_response_to_client(msg, dst)
+                            self.analysis.evaluate_accumulated_response_to_client(msg, dst)
                         }
                         SrcLocation::Node(_) => Err(Error::InvalidMessage(
                             msg.id(),
                             format!(
-                                "A client message from a node should never surface here: {:?}",
-                                msg
+                                "A client message from a node should never surface here: {:?}. Src: {:?}, Dst: {:?}",
+                                msg, src, dst
                             ),
                         )),
                     },

@@ -60,7 +60,7 @@ impl ChunkStorage {
                 }
                 .into(),
                 dst: DstLocation::EndUser(origin),
-                to_be_aggregated: true,
+                to_be_aggregated: false, // TODO: to_be_aggregated: true,
             }))
         } else {
             Ok(NodeMessagingDuty::NoOp)
@@ -112,7 +112,7 @@ impl ChunkStorage {
             }
             .into(),
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false,
+            to_be_aggregated: false, // TODO: to_be_aggregated: true,
         }))
     }
 
@@ -155,13 +155,13 @@ impl ChunkStorage {
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
             msg: NodeMessage::NodeQueryResponse {
                 response: NodeQueryResponse::Data(NodeDataQueryResponse::GetChunk(result)),
-                id: MessageId::new(),
+                id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
                 query_origin: origin,
             }
             .into(),
             dst: origin.to_dst(),
-            to_be_aggregated: true,
+            to_be_aggregated: false, // TODO: to_be_aggregated: true,
         }))
     }
 
@@ -221,13 +221,13 @@ impl ChunkStorage {
             return Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: ClientMessage::CmdError {
                     error: CmdError::Data(error),
-                    id: MessageId::new(),
+                    id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
                     cmd_origin: SrcLocation::EndUser(origin),
                 }
                 .into(),
                 dst: DstLocation::EndUser(origin),
-                to_be_aggregated: true,
+                to_be_aggregated: false, // TODO: to_be_aggregated: true,
             }));
         }
         Ok(NodeMessagingDuty::NoOp)

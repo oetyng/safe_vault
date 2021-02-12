@@ -232,7 +232,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -260,7 +260,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -288,7 +288,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -326,7 +326,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -354,7 +354,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -383,7 +383,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -412,7 +412,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -440,7 +440,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -472,7 +472,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::Section(origin.name()),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -495,8 +495,8 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                     cmd_origin: SrcLocation::EndUser(origin),
                 }
                 .into(),
-                dst: DstLocation::Section(origin.name()),
-                to_be_aggregated: true, // this needs more consideration...
+                dst: DstLocation::EndUser(origin),
+                to_be_aggregated: false, // TODO: to_be_aggregated: true, // this needs more consideration...
             }))
         } else {
             info!("MapStorage: Writing chunk PASSED!");
