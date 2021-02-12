@@ -34,8 +34,6 @@ use sn_messaging::{
         NodeTransferQuery, NodeTransferQueryResponse,
     },
     ClientMessage,
-    DstLocation,
-    Message,
     MessageId,
     NodeMessage,
     SrcLocation,
@@ -55,48 +53,34 @@ impl ReceivedMsgAnalysis {
         Self { state }
     }
 
-    pub fn evaluate_msg(
-        &self,
-        msg: Message,
-        src: SrcLocation,
-        dst: DstLocation,
-    ) -> Result<NodeOperation> {
-        debug!("Evaluating received msg..");
-
-        match msg {
-            Message::Node(msg) => self.evaluate_node_msg(msg, src, dst),
-            Message::Client(msg) => self.evaluate_client_msg(msg, src, dst),
-        }
-    }
-
-    fn evaluate_node_msg(
-        &self,
-        msg: NodeMessage,
-        src: SrcLocation,
-        dst: DstLocation,
-    ) -> Result<NodeOperation> {
+    pub fn evaluate_node_msg(&self, msg: NodeMessage, src: SrcLocation) -> Result<NodeOperation> {
         debug!(".. node msg ..");
 
-        use DstLocation::*;
-        match &dst {
-            Direct | User(_) => Err(Error::InvalidOperation),
-            Section(_name) => self.match_section_msg(msg, src),
+        use SrcLocation::*;
+        match &src {
             Node(_name) => self.match_node_msg(msg, src),
+            Section(_name) => self.match_section_msg(msg, src),
+            User(_) => Err(Error::InvalidMessage(
+                msg.id(),
+                "User is not a valid src for NodeMessage".to_string(),
+            )),
         }
     }
 
-    fn evaluate_client_msg(
+    pub fn evaluate_client_msg(
         &self,
         msg: ClientMessage,
         src: SrcLocation,
-        _dst: DstLocation,
     ) -> Result<NodeOperation> {
         debug!(".. client msg..");
 
         use SrcLocation::*;
         match &src {
             User(origin) => self.match_user_msg(msg, *origin),
-            Node(_) | Section(_) => Err(Error::InvalidOperation),
+            Node(_) | Section(_) => Err(Error::InvalidMessage(
+                msg.id(),
+                "Only User is a valid src for ClientMessage".to_string(),
+            )),
         }
     }
 
@@ -149,28 +133,6 @@ impl ReceivedMsgAnalysis {
         debug!("Evaluating received msg for Section: {:?}", msg);
 
         let res = match &msg {
-            //
-            // ------ wallet register ------
-            NodeMessage::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::RegisterWallet { wallet, .. }),
-                id,
-                ..
-            } => RewardDuty::ProcessCmd {
-                cmd: RewardCmd::SetNodeWallet {
-                    wallet_id: *wallet,
-                    node_id: origin.to_dst().name().unwrap(),
-                },
-                msg_id: *id,
-                origin,
-            }
-            .into(),
-            //
-            // ------ system cmd ------
-            NodeMessage::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::StorageFull { node_id, .. }),
-                ..
-            } => ElderDuty::StorageFull { node_id: *node_id }.into(),
-            //
             // ------ metadata ------
             NodeMessage::NodeQuery {
                 query: NodeQuery::Data { query, origin },
@@ -381,24 +343,6 @@ impl ReceivedMsgAnalysis {
                 origin,
             }
             .into(),
-            //
-            // ------ node duties ------
-            NodeMessage::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis { credit, sig }),
-                ..
-            } => NodeDuty::ReceiveGenesisProposal {
-                credit: credit.clone(),
-                sig: sig.clone(),
-            }
-            .into(),
-            NodeMessage::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::AccumulateGenesis { signed_credit, sig }),
-                ..
-            } => NodeDuty::ReceiveGenesisAccumulation {
-                signed_credit: signed_credit.clone(),
-                sig: sig.clone(),
-            }
-            .into(),
             // // ... so... we accumulate a query response, hmm
             // NodeMessage::NodeQueryResponse {
             //     response:
@@ -433,6 +377,47 @@ impl ReceivedMsgAnalysis {
         debug!("Evaluating received msg for Node: {:?}", msg);
 
         let res = match &msg {
+            //
+            // ------ wallet register ------
+            NodeMessage::NodeCmd {
+                cmd: NodeCmd::System(NodeSystemCmd::RegisterWallet { wallet, .. }),
+                id,
+                ..
+            } => RewardDuty::ProcessCmd {
+                cmd: RewardCmd::SetNodeWallet {
+                    wallet_id: *wallet,
+                    node_id: origin.to_dst().name().unwrap(),
+                },
+                msg_id: *id,
+                origin,
+            }
+            .into(),
+            //
+            // ------ system cmd ------
+            NodeMessage::NodeCmd {
+                cmd: NodeCmd::System(NodeSystemCmd::StorageFull { node_id, .. }),
+                ..
+            } => ElderDuty::StorageFull { node_id: *node_id }.into(),
+
+            //
+            // ------ node duties ------
+            NodeMessage::NodeCmd {
+                cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis { credit, sig }),
+                ..
+            } => NodeDuty::ReceiveGenesisProposal {
+                credit: credit.clone(),
+                sig: sig.clone(),
+            }
+            .into(),
+            NodeMessage::NodeCmd {
+                cmd: NodeCmd::System(NodeSystemCmd::AccumulateGenesis { signed_credit, sig }),
+                ..
+            } => NodeDuty::ReceiveGenesisAccumulation {
+                signed_credit: signed_credit.clone(),
+                sig: sig.clone(),
+            }
+            .into(),
+            //
             //
             // ------ chunk replication ------
             // query response from adult cannot be accumulated
@@ -517,7 +502,9 @@ impl ReceivedMsgAnalysis {
         if let NodeState::Adult(state) = &self.state {
             Ok(state)
         } else {
-            Err(Error::InvalidOperation)
+            Err(Error::InvalidOperation(
+                "Tried to get adult state when there was none.".to_string(),
+            ))
         }
     }
 }

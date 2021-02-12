@@ -11,6 +11,7 @@ use crate::node::node_ops::{ElderDuty, NodeDuty, NodeOperation};
 use crate::{Network, Result};
 use log::{info, trace};
 use sn_data_types::PublicKey;
+use sn_messaging::{MessageType, SrcLocation};
 use sn_routing::{Event as RoutingEvent, NodeElderChange, MIN_AGE};
 use xor_name::XorName;
 
@@ -87,19 +88,21 @@ impl NetworkEvents {
                     Ok(ProcessNewMember(XorName(name.0)).into())
                 }
             }
+            RoutingEvent::ClientMessageReceived { msg, user, .. } => {
+                info!("Received client message: {:8?}\n Sent from {:?}", msg, user,);
+                self.analysis
+                    .evaluate_client_msg(*msg, SrcLocation::User(user))
+            }
             RoutingEvent::MessageReceived { msg, src, dst } => {
                 info!(
                     "Received network message: {:8?}\n Sent from {:?} to {:?}",
                     msg, src, dst
                 );
-                let msg = match msg {
-                    sn_messaging::MessageType::ClientMessage(msg) => {
-                        sn_messaging::Message::Client(msg)
-                    }
-                    sn_messaging::MessageType::NodeMessage(msg) => sn_messaging::Message::Node(msg),
+                match msg {
+                    MessageType::ClientMessage(msg) => self.analysis.evaluate_client_msg(msg, src),
+                    MessageType::NodeMessage(msg) => self.analysis.evaluate_node_msg(msg, src),
                     _ => return Ok(NodeOperation::NoOp),
-                };
-                self.analysis.evaluate_msg(msg, src, dst)
+                }
             }
             RoutingEvent::EldersChanged {
                 key,

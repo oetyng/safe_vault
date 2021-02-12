@@ -287,11 +287,15 @@ impl Transfers {
         };
         match result {
             Ok(_) => {
-                info!("Payment: registration and propagation succeeded.");
-                // Paying too little will see the amount be forfeited.
-                // This prevents spam of the network.
                 let total_cost = self.rate_limit.from(num_bytes).await;
+                info!("Payment: registration and propagation succeeded. (Store cost: {}, paid amount: {}.)", total_cost, payment.amount());
+                info!(
+                    "Section balance: {}",
+                    self.replicas.balance(payment.recipient()).await?
+                );
                 if total_cost > payment.amount() {
+                    // Paying too little will see the amount be forfeited.
+                    // This prevents spam of the network.
                     warn!(
                         "Payment: Too low payment: {}, expected: {}",
                         payment.amount(),

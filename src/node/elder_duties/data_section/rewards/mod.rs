@@ -317,7 +317,7 @@ impl Rewards {
             }
             .into(),
             dst: DstLocation::Section(old_node_id),
-            to_be_aggregated: false,
+            to_be_aggregated: true,
         }))
     }
 
@@ -464,7 +464,7 @@ impl Rewards {
                 query_origin: origin,
             }
             .into(),
-            dst: origin.to_dst(),
+            dst: DstLocation::Section(new_node_id),
             to_be_aggregated: true,
         }))
     }

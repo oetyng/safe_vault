@@ -89,7 +89,7 @@ pub enum Error {
     InvalidOwners(PublicKey),
     /// Data operation is invalid, eg private operation on public data
     #[error("Invalid operation")]
-    InvalidOperation,
+    InvalidOperation(String),
     /// No mapping to sn_messages::Error could be found. Either we need a new error there, or we need to handle or convert this error before sending it as a message
     #[error("No mapping to sn_messages error is set up for this NodeError {0}")]
     NoErrorMapping(String),
@@ -100,7 +100,7 @@ pub enum Error {
 
 pub(crate) fn convert_to_error_message(error: Error) -> Result<sn_messaging::client::Error> {
     match error {
-        Error::InvalidOperation => Ok(ErrorMessage::InvalidOperation),
+        Error::InvalidOperation(_msg) => Ok(ErrorMessage::InvalidOperation),
         Error::InvalidOwners(key) => Ok(ErrorMessage::InvalidOwners(key)),
         Error::InvalidSignedTransfer(_) => Ok(ErrorMessage::InvalidSignature),
         Error::TransferAlreadyRegistered => Ok(ErrorMessage::TransactionIdExists),
