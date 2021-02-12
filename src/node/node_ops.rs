@@ -16,7 +16,7 @@ use sn_data_types::{
     WalletInfo,
 };
 use sn_messaging::{
-    location::User, ClientMessage, DstLocation, Message, MessageId, NodeMessage, SrcLocation,
+    location::EndUser, ClientMessage, DstLocation, Message, MessageId, NodeMessage, SrcLocation,
 };
 use std::fmt::Formatter;
 
@@ -396,13 +396,13 @@ pub enum MetadataDuty {
     ProcessRead {
         query: sn_messaging::client::DataQuery,
         id: MessageId,
-        origin: User,
+        origin: EndUser,
     },
     /// Writes.
     ProcessWrite {
         cmd: sn_messaging::client::DataCmd,
         id: MessageId,
-        origin: User,
+        origin: EndUser,
     },
     NoOp,
 }
@@ -431,13 +431,13 @@ pub enum ChunkStoreDuty {
     ReadChunk {
         read: sn_messaging::client::BlobRead,
         id: MessageId,
-        origin: User,
+        origin: EndUser,
     },
     /// Writes.
     WriteChunk {
         write: sn_messaging::client::BlobWrite,
         id: MessageId,
-        origin: User,
+        origin: EndUser,
     },
     NoOp,
 }

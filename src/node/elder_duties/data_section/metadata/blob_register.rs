@@ -20,7 +20,7 @@ use sn_messaging::{
         BlobRead, BlobWrite, CmdError, DataCmd, DataQuery, Error as ErrorMessage, Query,
         QueryResponse,
     },
-    location::User,
+    location::EndUser,
     node::{NodeCmd, NodeSystemCmd},
     ClientMessage, DstLocation, MessageId, NodeMessage, SrcLocation,
 };
@@ -66,7 +66,7 @@ impl BlobRegister {
         &mut self,
         write: BlobWrite,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         use BlobWrite::*;
         match write {
@@ -79,7 +79,7 @@ impl BlobRegister {
         &mut self,
         data: Blob,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         // If the data already exist, check the existing no of copies.
         // If no of copies are less then required, then continue with the put request.
@@ -93,7 +93,7 @@ impl BlobRegister {
                         msg: ClientMessage::CmdError {
                             error: CmdError::Data(ErrorMessage::DataExists),
                             id: MessageId::new(),
-                            cmd_origin: SrcLocation::User(origin),
+                            cmd_origin: SrcLocation::EndUser(origin),
                             correlation_id: msg_id,
                         }
                         .into(),
@@ -155,14 +155,14 @@ impl BlobRegister {
         &self,
         error: Error,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let message_error = convert_to_error_message(error)?;
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
             msg: ClientMessage::CmdError {
                 error: CmdError::Data(message_error),
                 id: MessageId::new(),
-                cmd_origin: SrcLocation::User(origin),
+                cmd_origin: SrcLocation::EndUser(origin),
                 correlation_id: msg_id,
             }
             .into(),
@@ -175,7 +175,7 @@ impl BlobRegister {
         &mut self,
         address: BlobAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let metadata = match self.get_metadata_for(address) {
             Ok(metadata) => metadata,
@@ -219,7 +219,7 @@ impl BlobRegister {
         &mut self,
         blob_address: BlobAddress,
         holder: XorName,
-        origin: User,
+        origin: EndUser,
     ) -> Result<()> {
         // TODO -
         // - if Err, we need to flag this sender as "full" (i.e. add to self.full_adults, try on
@@ -369,7 +369,7 @@ impl BlobRegister {
         &self,
         read: &BlobRead,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         use BlobRead::*;
         match read {
@@ -381,19 +381,19 @@ impl BlobRegister {
         &self,
         address: BlobAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let query_error = |error: Error| async {
             let message_error = convert_to_error_message(error)?;
             let err_msg = ClientMessage::QueryResponse {
                 response: QueryResponse::GetBlob(Err(message_error)),
                 id: MessageId::in_response_to(&msg_id),
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
                 correlation_id: msg_id,
             };
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: err_msg.into(),
-                dst: DstLocation::User(origin),
+                dst: DstLocation::EndUser(origin),
                 to_be_aggregated: true,
             }))
         };

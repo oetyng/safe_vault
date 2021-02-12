@@ -16,14 +16,14 @@ use crate::node::node_ops::{IntoNodeOp, NodeMessagingDuty, NodeOperation};
 use crate::Result;
 use sn_messaging::{
     client::{BlobRead, DataQuery, MapRead, SequenceRead},
-    location::User,
+    location::EndUser,
     MessageId,
 };
 
 pub(super) async fn get_result(
     query: DataQuery,
     msg_id: MessageId,
-    origin: User,
+    origin: EndUser,
     stores: &ElderStores,
 ) -> Result<NodeOperation> {
     use DataQuery::*;
@@ -39,7 +39,7 @@ async fn blob(
     read: &BlobRead,
     register: &BlobRegister,
     msg_id: MessageId,
-    origin: User,
+    origin: EndUser,
 ) -> Result<NodeMessagingDuty> {
     register.read(read, msg_id, origin).await
 }
@@ -48,7 +48,7 @@ async fn map(
     read: &MapRead,
     storage: &MapStorage,
     msg_id: MessageId,
-    origin: User,
+    origin: EndUser,
 ) -> Result<NodeMessagingDuty> {
     storage.read(read, msg_id, origin).await
 }
@@ -57,7 +57,7 @@ async fn sequence(
     read: &SequenceRead,
     storage: &SequenceStorage,
     msg_id: MessageId,
-    origin: User,
+    origin: EndUser,
 ) -> Result<NodeMessagingDuty> {
     storage.read(read, msg_id, origin).await
 }

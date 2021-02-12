@@ -19,7 +19,7 @@ use sn_data_types::{
 };
 use sn_messaging::{
     client::{CmdError, MapRead, MapWrite, QueryResponse},
-    location::User,
+    location::EndUser,
     ClientMessage, DstLocation, MessageId, SrcLocation,
 };
 
@@ -40,7 +40,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         read: &MapRead,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         use MapRead::*;
         match read {
@@ -63,7 +63,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &mut self,
         write: MapWrite,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         use MapWrite::*;
         match write {
@@ -94,7 +94,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
     /// Returns `Some(Result<..>)` if the flow should be continued, returns
     /// `None` if there was a logic error encountered and the flow should be
     /// terminated.
-    fn get_chunk(&self, address: &MapAddress, origin: User, action: MapAction) -> Result<Map> {
+    fn get_chunk(&self, address: &MapAddress, origin: EndUser, action: MapAction) -> Result<Map> {
         self.chunks.get(&address).and_then(move |map| {
             map.check_permissions(action, origin.id())
                 .map(move |_| map)
@@ -106,7 +106,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
     async fn edit_chunk<F>(
         &mut self,
         address: &MapAddress,
-        origin: User,
+        origin: EndUser,
         msg_id: MessageId,
         mutation_fn: F,
     ) -> Result<NodeMessagingDuty>
@@ -129,7 +129,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &mut self,
         data: &Map,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = if self.chunks.has(data.address()) {
             Err(Error::DataExists)
@@ -143,7 +143,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &mut self,
         address: MapAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = match self.chunks.get(&address) {
             Ok(map) => match map.check_is_owner(origin.id()) {
@@ -170,7 +170,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         permissions: &MapPermissionSet,
         version: u64,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         self.edit_chunk(&address, origin, msg_id, move |mut data| {
             data.check_permissions(MapAction::ManagePermissions, origin.id())?;
@@ -187,7 +187,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         user: PublicKey,
         version: u64,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         self.edit_chunk(&address, origin, msg_id, move |mut data| {
             data.check_permissions(MapAction::ManagePermissions, origin.id())?;
@@ -203,7 +203,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         address: MapAddress,
         actions: MapEntryActions,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         self.edit_chunk(&address, origin, msg_id, move |mut data| {
             data.mutate_entries(actions, origin.id())?;
@@ -217,7 +217,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         address: MapAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = match self.get_chunk(&address, origin, MapAction::Read) {
             Ok(res) => Ok(res),
@@ -229,7 +229,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::GetMap(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -242,7 +242,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         address: MapAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = match self
             .get_chunk(&address, origin, MapAction::Read)
@@ -257,7 +257,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::GetMapShell(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -270,7 +270,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         address: MapAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = match self
             .get_chunk(&address, origin, MapAction::Read)
@@ -285,7 +285,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::GetMapVersion(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -299,7 +299,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         address: MapAddress,
         key: &[u8],
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let res = self.get_chunk(&address, origin, MapAction::Read);
         let result = match res.and_then(|data| match data {
@@ -323,7 +323,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::GetMapValue(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -336,7 +336,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         address: MapAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = match self
             .get_chunk(&address, origin, MapAction::Read)
@@ -351,7 +351,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::ListMapKeys(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -364,7 +364,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         address: MapAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let res = self.get_chunk(&address, origin, MapAction::Read);
         let result = match res.map(|data| match data {
@@ -380,7 +380,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::ListMapValues(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -393,7 +393,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         address: MapAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let res = self.get_chunk(&address, origin, MapAction::Read);
         let result = match res.map(|data| match data {
@@ -409,7 +409,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::ListMapEntries(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -422,7 +422,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         address: MapAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = match self
             .get_chunk(&address, origin, MapAction::Read)
@@ -437,7 +437,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::ListMapPermissions(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -451,7 +451,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         address: MapAddress,
         user: PublicKey,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = match self
             .get_chunk(&address, origin, MapAction::Read)
@@ -469,7 +469,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 response: QueryResponse::ListMapUserPermissions(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
@@ -481,7 +481,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         &self,
         result: Result<()>,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         if let Err(error) = result {
             let messaging_error = convert_to_error_message(error)?;
@@ -492,7 +492,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                     error: CmdError::Data(messaging_error),
                     id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
-                    cmd_origin: SrcLocation::User(origin),
+                    cmd_origin: SrcLocation::EndUser(origin),
                 }
                 .into(),
                 dst: DstLocation::Section(origin.name()),

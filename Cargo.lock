@@ -2365,7 +2365,7 @@ dependencies = [
 [[package]]
 name = "sn_messaging"
 version = "3.0.2"
-source = "git+https://github.com/oetyng/sn_messaging?branch=remove-msgenvelope#5b578c17c76703d9031defed52221137a610b088"
+source = "git+https://github.com/oetyng/sn_messaging?branch=remove-msgenvelope#3951cbf01e80112281b86a400adce0af24d2a6bf"
 dependencies = [
  "bincode",
  "bytes 1.0.1",
@@ -2437,7 +2437,7 @@ dependencies = [
 [[package]]
 name = "sn_routing"
 version = "0.42.4"
-source = "git+https://github.com/oetyng/sn_routing?branch=remove-msgenvelope#8de2d669be9eea8b65921f4b55cc0bf833b13dcc"
+source = "git+https://github.com/oetyng/sn_routing?branch=remove-msgenvelope#19c1e9c51c021f9a01f6d6aee24ad990f880fa76"
 dependencies = [
  "bincode",
  "bls_dkg",

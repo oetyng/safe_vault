@@ -19,7 +19,7 @@ use log::{error, info};
 use sn_data_types::{Blob, BlobAddress};
 use sn_messaging::{
     client::{CmdError, Error as ErrorMessage, QueryResponse},
-    location::User,
+    location::EndUser,
     node::{NodeDataQueryResponse, NodeQuery, NodeQueryResponse, NodeSystemQuery},
     ClientMessage, DstLocation, MessageId, NodeMessage, SrcLocation,
 };
@@ -48,7 +48,7 @@ impl ChunkStorage {
         &mut self,
         data: &Blob,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         if let Err(error) = self.try_store(data, origin).await {
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
@@ -56,10 +56,10 @@ impl ChunkStorage {
                     error: CmdError::Data(convert_to_error_message(error)?),
                     id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
-                    cmd_origin: SrcLocation::User(origin),
+                    cmd_origin: SrcLocation::EndUser(origin),
                 }
                 .into(),
-                dst: DstLocation::User(origin),
+                dst: DstLocation::EndUser(origin),
                 to_be_aggregated: true,
             }))
         } else {
@@ -67,7 +67,7 @@ impl ChunkStorage {
         }
     }
 
-    async fn try_store(&mut self, data: &Blob, origin: User) -> Result<()> {
+    async fn try_store(&mut self, data: &Blob, origin: EndUser) -> Result<()> {
         info!("TRYING TO STORE BLOB");
         if data.is_private() {
             let data_owner = data
@@ -97,7 +97,7 @@ impl ChunkStorage {
         &self,
         address: &BlobAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let result = self
             .chunks
@@ -108,10 +108,10 @@ impl ChunkStorage {
                 id: MessageId::in_response_to(&msg_id),
                 response: QueryResponse::GetBlob(result),
                 correlation_id: msg_id,
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
             }
             .into(),
-            dst: DstLocation::User(origin),
+            dst: DstLocation::EndUser(origin),
             to_be_aggregated: false,
         }))
     }
@@ -189,7 +189,7 @@ impl ChunkStorage {
         &mut self,
         address: BlobAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         if !self.chunks.has(&address) {
             info!("{}: Immutable chunk doesn't exist: {:?}", self, address);
@@ -223,10 +223,10 @@ impl ChunkStorage {
                     error: CmdError::Data(error),
                     id: MessageId::new(),
                     correlation_id: msg_id,
-                    cmd_origin: SrcLocation::User(origin),
+                    cmd_origin: SrcLocation::EndUser(origin),
                 }
                 .into(),
-                dst: DstLocation::User(origin),
+                dst: DstLocation::EndUser(origin),
                 to_be_aggregated: true,
             }));
         }

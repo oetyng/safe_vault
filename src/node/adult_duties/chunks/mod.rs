@@ -19,7 +19,7 @@ use log::info;
 use sn_data_types::{Blob, BlobAddress};
 use sn_messaging::{
     client::{BlobRead, BlobWrite},
-    location::User,
+    location::EndUser,
     MessageId, SrcLocation,
 };
 use std::{
@@ -45,7 +45,7 @@ impl Chunks {
         &mut self,
         read: &BlobRead,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         reading::get_result(read, msg_id, origin, &self.chunk_storage).await
     }
@@ -54,7 +54,7 @@ impl Chunks {
         &mut self,
         write: &BlobWrite,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         writing::get_result(write, msg_id, origin, &mut self.chunk_storage).await
     }

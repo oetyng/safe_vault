@@ -34,10 +34,10 @@ use sn_messaging::{
         NodeTransferQuery, NodeTransferQueryResponse,
     },
     ClientMessage,
+    EndUser,
     MessageId,
     NodeMessage,
     SrcLocation,
-    User,
 };
 
 // NB: This approach is not entirely good, so will need to be improved.
@@ -60,7 +60,7 @@ impl ReceivedMsgAnalysis {
         match &src {
             Node(_name) => self.match_node_msg(msg, src),
             Section(_name) => self.match_section_msg(msg, src),
-            User(_) => Err(Error::InvalidMessage(
+            EndUser(_) => Err(Error::InvalidMessage(
                 msg.id(),
                 "User is not a valid src for NodeMessage".to_string(),
             )),
@@ -76,15 +76,15 @@ impl ReceivedMsgAnalysis {
 
         use SrcLocation::*;
         match &src {
-            User(origin) => self.match_user_msg(msg, *origin),
+            EndUser(origin) => self.match_user_msg(msg, *origin),
             Node(_) | Section(_) => Err(Error::InvalidMessage(
                 msg.id(),
-                "Only User is a valid src for ClientMessage".to_string(),
+                format!("Only EndUser is a valid src for ClientMessage: {:?}", msg),
             )),
         }
     }
 
-    fn match_user_msg(&self, msg: ClientMessage, origin: User) -> Result<NodeOperation> {
+    fn match_user_msg(&self, msg: ClientMessage, origin: EndUser) -> Result<NodeOperation> {
         match msg {
             ClientMessage::Query {
                 query: Query::Data(query),
@@ -98,7 +98,7 @@ impl ReceivedMsgAnalysis {
             } => Ok(TransferDuty::ProcessCmd {
                 cmd: TransferCmd::ProcessPayment(msg.clone()),
                 msg_id: id,
-                origin: SrcLocation::User(origin),
+                origin: SrcLocation::EndUser(origin),
             }
             .into()),
             ClientMessage::Cmd {
@@ -108,7 +108,7 @@ impl ReceivedMsgAnalysis {
             } => Ok(TransferDuty::ProcessCmd {
                 cmd: cmd.into(),
                 msg_id: id,
-                origin: SrcLocation::User(origin),
+                origin: SrcLocation::EndUser(origin),
             }
             .into()),
             ClientMessage::Query {
@@ -118,7 +118,7 @@ impl ReceivedMsgAnalysis {
             } => Ok(TransferDuty::ProcessQuery {
                 query: query.into(),
                 msg_id: id,
-                origin: SrcLocation::User(origin),
+                origin: SrcLocation::EndUser(origin),
             }
             .into()),
             _ => Err(Error::Logic(format!(
@@ -167,7 +167,7 @@ impl ReceivedMsgAnalysis {
             // } => AdultDuty::RunAsChunkStore(ChunkStoreDuty::ReadChunk {
             //     read: read.clone(),
             //     id: *id,
-            //     origin: SrcLocation::User(*origin),
+            //     origin: SrcLocation::EndUser(*origin),
             // })
             // .into(),
             // NodeMessage::NodeCmd {
@@ -181,7 +181,7 @@ impl ReceivedMsgAnalysis {
             // } => AdultDuty::RunAsChunkStore(ChunkStoreDuty::WriteChunk {
             //     write: cmd.clone(),
             //     id: *id,
-            //     origin: SrcLocation::User(*origin),
+            //     origin: SrcLocation::EndUser(*origin),
             // })
             // .into(),
             //

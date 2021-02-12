@@ -15,14 +15,14 @@ use crate::Result;
 use log::info;
 use sn_messaging::{
     client::{BlobWrite, DataCmd, MapWrite, SequenceWrite},
-    location::User,
+    location::EndUser,
     MessageId,
 };
 
 pub(super) async fn get_result(
     cmd: DataCmd,
     msg_id: MessageId,
-    origin: User,
+    origin: EndUser,
     stores: &mut ElderStores,
 ) -> Result<NodeOperation> {
     use DataCmd::*;
@@ -48,7 +48,7 @@ async fn blob(
     write: BlobWrite,
     register: &mut BlobRegister,
     msg_id: MessageId,
-    origin: User,
+    origin: EndUser,
 ) -> Result<NodeMessagingDuty> {
     register.write(write, msg_id, origin).await
 }
@@ -57,7 +57,7 @@ async fn map(
     write: MapWrite,
     storage: &mut MapStorage,
     msg_id: MessageId,
-    origin: User,
+    origin: EndUser,
 ) -> Result<NodeMessagingDuty> {
     storage.write(write, msg_id, origin).await
 }
@@ -66,7 +66,7 @@ async fn sequence(
     write: SequenceWrite,
     storage: &mut SequenceStorage,
     msg_id: MessageId,
-    origin: User,
+    origin: EndUser,
 ) -> Result<NodeMessagingDuty> {
     storage.write(write, msg_id, origin).await
 }

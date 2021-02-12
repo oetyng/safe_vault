@@ -18,8 +18,8 @@ use crate::{
     capacity::RateLimit,
     error::{convert_dt_error_to_error_message, convert_to_error_message},
     node::node_ops::{
-        ElderDuty, IntoNodeOp, NodeMessagingDuty, NodeOperation, OutgoingMsg, TransferCmd,
-        TransferDuty, TransferQuery,
+        IntoNodeOp, NodeMessagingDuty, NodeOperation, OutgoingMsg, TransferCmd, TransferDuty,
+        TransferQuery,
     },
     utils, Error, Result,
 };
@@ -34,7 +34,7 @@ use sn_data_types::{
 };
 use sn_messaging::{
     client::{Cmd, CmdError, Error as ErrorMessage, Event, QueryResponse, TransferError},
-    location::User,
+    location::EndUser,
     node::{
         NodeCmd,
         NodeCmdError,
@@ -258,7 +258,7 @@ impl Transfers {
         use TransferError::*;
         if recipient_is_not_section {
             warn!("Payment: recipient is not section");
-            let origin = SrcLocation::User(User::EndUser(payment.sender()));
+            let origin = SrcLocation::EndUser(EndUser::AllClients(payment.sender()));
             return Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: ClientMessage::CmdError {
                     error: CmdError::Transfer(TransferRegistration(ErrorMessage::NoSuchRecipient)),
@@ -300,7 +300,7 @@ impl Transfers {
                         total_cost
                     );
                     // todo, better error, like `TooLowPayment`
-                    let origin = SrcLocation::User(User::EndUser(payment.sender()));
+                    let origin = SrcLocation::EndUser(EndUser::AllClients(payment.sender()));
                     return Ok(NodeMessagingDuty::Send(OutgoingMsg {
                         msg: ClientMessage::CmdError {
                             error: CmdError::Transfer(TransferRegistration(
@@ -326,7 +326,7 @@ impl Transfers {
             }
             Err(e) => {
                 warn!("Payment: registration or propagation failed: {}", e);
-                let origin = SrcLocation::User(User::EndUser(payment.sender()));
+                let origin = SrcLocation::EndUser(EndUser::AllClients(payment.sender()));
                 Ok(NodeMessagingDuty::Send(OutgoingMsg {
                     msg: ClientMessage::CmdError {
                         error: CmdError::Transfer(TransferRegistration(
@@ -610,10 +610,10 @@ impl Transfers {
                         )),
                         id: MessageId::in_response_to(&msg_id),
                         correlation_id: msg_id,
-                        cmd_origin: SrcLocation::User(User::EndUser(proof.sender())),
+                        cmd_origin: SrcLocation::EndUser(EndUser::AllClients(proof.sender())),
                     }
                     .into(),
-                    dst: DstLocation::User(User::EndUser(proof.sender())),
+                    dst: DstLocation::EndUser(EndUser::AllClients(proof.sender())),
                     to_be_aggregated: true,
                 }))
             }

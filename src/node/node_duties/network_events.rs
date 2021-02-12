@@ -91,7 +91,7 @@ impl NetworkEvents {
             RoutingEvent::ClientMessageReceived { msg, user, .. } => {
                 info!("Received client message: {:8?}\n Sent from {:?}", msg, user,);
                 self.analysis
-                    .evaluate_client_msg(*msg, SrcLocation::User(user))
+                    .evaluate_client_msg(*msg, SrcLocation::EndUser(user))
             }
             RoutingEvent::MessageReceived { msg, src, dst } => {
                 info!(
