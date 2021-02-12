@@ -11,7 +11,7 @@ use crate::node::node_ops::{ElderDuty, NodeDuty, NodeOperation};
 use crate::{Network, Result};
 use log::{info, trace};
 use sn_data_types::PublicKey;
-use sn_messaging::{MessageType, SrcLocation};
+use sn_messaging::MessageType;
 use sn_routing::{Event as RoutingEvent, NodeElderChange, MIN_AGE};
 use xor_name::XorName;
 
@@ -90,8 +90,7 @@ impl NetworkEvents {
             }
             RoutingEvent::ClientMessageReceived { msg, user, .. } => {
                 info!("Received client message: {:8?}\n Sent from {:?}", msg, user,);
-                self.analysis
-                    .evaluate_client_msg(*msg, SrcLocation::EndUser(user))
+                self.analysis.evaluate_msg_from_client(*msg, user)
             }
             RoutingEvent::MessageReceived { msg, src, dst } => {
                 info!(
@@ -99,7 +98,9 @@ impl NetworkEvents {
                     msg, src, dst
                 );
                 match msg {
-                    MessageType::ClientMessage(msg) => self.analysis.evaluate_client_msg(msg, src),
+                    MessageType::ClientMessage(msg) => {
+                        self.analysis.evaluate_response_to_client(msg, src, dst)
+                    }
                     MessageType::NodeMessage(msg) => self.analysis.evaluate_node_msg(msg, src),
                     _ => return Ok(NodeOperation::NoOp),
                 }

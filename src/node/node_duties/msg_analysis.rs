@@ -8,36 +8,21 @@
 
 use crate::{
     node::node_ops::{
-        AdultDuty,
-        ChunkReplicationCmd,
-        ChunkReplicationDuty,
-        ChunkReplicationQuery,
-        ElderDuty,
-        MetadataDuty,
-        NodeDuty,
-        NodeOperation,
-        RewardCmd,
-        RewardDuty, // ChunkStoreDuty
-        RewardQuery,
-        TransferCmd,
-        TransferDuty,
-        TransferQuery,
+        AdultDuty, ChunkReplicationCmd, ChunkReplicationDuty, ChunkReplicationQuery, ElderDuty,
+        MetadataDuty, NodeDuty, NodeMessagingDuty, NodeOperation, OutgoingMsg, RewardCmd,
+        RewardDuty, RewardQuery, TransferCmd, TransferDuty, TransferQuery,
     },
     AdultState, Error, NodeState, Result,
 };
 use log::{debug, info};
 use sn_messaging::{
-    client::{Cmd, Query}, //, DataQuery, DataCmd},
+    client::{Cmd, Query},
     node::{
         NodeCmd, NodeDataQueryResponse, NodeEvent, NodeQuery, NodeQueryResponse, NodeRewardQuery,
         NodeRewardQueryResponse, NodeSystemCmd, NodeSystemQuery, NodeTransferCmd,
         NodeTransferQuery, NodeTransferQueryResponse,
     },
-    ClientMessage,
-    EndUser,
-    MessageId,
-    NodeMessage,
-    SrcLocation,
+    ClientMessage, DstLocation, EndUser, MessageId, NodeMessage, SrcLocation,
 };
 
 // NB: This approach is not entirely good, so will need to be improved.
@@ -67,24 +52,53 @@ impl ReceivedMsgAnalysis {
         }
     }
 
-    pub fn evaluate_client_msg(
+    pub fn evaluate_response_to_client(
         &self,
         msg: ClientMessage,
         src: SrcLocation,
+        dst: DstLocation,
     ) -> Result<NodeOperation> {
-        debug!(".. client msg..");
+        debug!(".. evaluating response to client ..");
 
-        use SrcLocation::*;
-        match &src {
-            EndUser(origin) => self.match_user_msg(msg, *origin),
-            Node(_) | Section(_) => Err(Error::InvalidMessage(
+        let is_src_node = matches!(src, SrcLocation::Node(_));
+        let is_src_enduser = matches!(src, SrcLocation::EndUser(_));
+        let is_enduser_dst = matches!(dst, DstLocation::EndUser(_));
+        let is_query_response = matches!(msg, ClientMessage::QueryResponse { .. });
+        let is_cmd_error = matches!(msg, ClientMessage::CmdError { .. });
+
+        if !(is_cmd_error || is_query_response || is_enduser_dst) {
+            Err(Error::InvalidMessage(msg.id(), format!(
+                "Could not evaluate accumulated msg: {:?}. is_cmd_error: {}, is_query_response: {}, is_enduser_dst: {}",
+                msg, is_cmd_error, is_query_response, is_enduser_dst
+            )))
+        } else if is_src_node {
+            Err(Error::InvalidMessage(
                 msg.id(),
-                format!("Only EndUser is a valid src for ClientMessage: {:?}", msg),
-            )),
+                format!(
+                    "This message should have been sent to client at sn_routing level: {:?}",
+                    msg
+                ),
+            ))
+        } else if is_src_enduser {
+            Err(Error::InvalidMessage(
+                msg.id(),
+                format!("This is not a response from network to client: {:?}", msg),
+            ))
+        } else {
+            Ok(NodeMessagingDuty::Send(OutgoingMsg {
+                msg: msg.into(),
+                dst,
+                to_be_aggregated: false,
+            })
+            .into())
         }
     }
 
-    fn match_user_msg(&self, msg: ClientMessage, origin: EndUser) -> Result<NodeOperation> {
+    pub fn evaluate_msg_from_client(
+        &self,
+        msg: ClientMessage,
+        origin: EndUser,
+    ) -> Result<NodeOperation> {
         match msg {
             ClientMessage::Query {
                 query: Query::Data(query),
