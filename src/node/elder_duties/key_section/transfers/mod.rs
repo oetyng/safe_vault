@@ -190,7 +190,7 @@ impl Transfers {
         debug!("Processing cmd in Transfers mod");
         let result = match cmd {
             InitiateReplica(events) => self.initiate_replica(events).await,
-            ProcessPayment(msg) => self.process_payment(msg).await,
+            ProcessPayment(msg) => self.process_payment(msg, origin).await,
             #[cfg(feature = "simulated-payouts")]
             // Cmd to simulate a farming payout
             SimulatePayout(transfer) => self.replicas.credit_without_proof(transfer.clone()).await,
@@ -236,13 +236,27 @@ impl Transfers {
     /// Makes sure the payment contained
     /// within a data write, is credited
     /// to the section funds.
-    async fn process_payment(&self, msg: &ClientMessage) -> Result<NodeMessagingDuty> {
-        let (payment, num_bytes, dst_address) = match &msg {
+    async fn process_payment(
+        &self,
+        msg: &ClientMessage,
+        origin: SrcLocation,
+    ) -> Result<NodeMessagingDuty> {
+        let origin = match origin {
+            SrcLocation::EndUser(enduser) => enduser,
+            _ => {
+                return Err(Error::InvalidMessage(
+                    msg.id(),
+                    format!("This source can only be an enduser.. : {:?}", msg),
+                ))
+            }
+        };
+        let (payment, data_cmd, num_bytes, dst_address) = match &msg {
             ClientMessage::Cmd {
                 cmd: Cmd::Data { payment, cmd },
                 ..
             } => (
                 payment,
+                cmd,
                 utils::serialise(cmd)?.len() as u64,
                 cmd.dst_address(),
             ),
@@ -319,7 +333,14 @@ impl Transfers {
                 // consider having the section actor be
                 // informed of this transfer as well..
                 Ok(NodeMessagingDuty::Send(OutgoingMsg {
-                    msg: msg.clone().into(),
+                    msg: NodeMessage::NodeCmd {
+                        cmd: NodeCmd::Data {
+                            cmd: data_cmd.clone(),
+                            origin,
+                        },
+                        id: MessageId::in_response_to(&msg.id()),
+                    }
+                    .into(),
                     dst: DstLocation::Section(dst_address),
                     to_be_aggregated: true,
                 }))

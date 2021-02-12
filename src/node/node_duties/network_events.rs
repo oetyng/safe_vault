@@ -7,11 +7,14 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use super::msg_analysis::ReceivedMsgAnalysis;
-use crate::node::node_ops::{ElderDuty, NodeDuty, NodeOperation};
+use crate::{
+    node::node_ops::{ElderDuty, NodeDuty, NodeOperation},
+    Error,
+};
 use crate::{Network, Result};
 use log::{info, trace};
 use sn_data_types::PublicKey;
-use sn_messaging::MessageType;
+use sn_messaging::{MessageType, SrcLocation};
 use sn_routing::{Event as RoutingEvent, NodeElderChange, MIN_AGE};
 use xor_name::XorName;
 
@@ -98,9 +101,21 @@ impl NetworkEvents {
                     msg, src, dst
                 );
                 match msg {
-                    MessageType::ClientMessage(msg) => {
-                        self.analysis.evaluate_response_to_client(msg, src, dst)
-                    }
+                    MessageType::ClientMessage(msg) => match src {
+                        SrcLocation::EndUser(origin) => {
+                            self.analysis.evaluate_msg_from_client(msg, origin)
+                        }
+                        SrcLocation::Section(_) => {
+                            self.analysis.evaluate_response_to_client(msg, dst)
+                        }
+                        SrcLocation::Node(_) => Err(Error::InvalidMessage(
+                            msg.id(),
+                            format!(
+                                "A client message from a node should never surface here: {:?}",
+                                msg
+                            ),
+                        )),
+                    },
                     MessageType::NodeMessage(msg) => self.analysis.evaluate_node_msg(msg, src),
                     _ => return Ok(NodeOperation::NoOp),
                 }

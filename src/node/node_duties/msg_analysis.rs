@@ -55,13 +55,10 @@ impl ReceivedMsgAnalysis {
     pub fn evaluate_response_to_client(
         &self,
         msg: ClientMessage,
-        src: SrcLocation,
         dst: DstLocation,
     ) -> Result<NodeOperation> {
         debug!(".. evaluating response to client ..");
 
-        let is_src_node = matches!(src, SrcLocation::Node(_));
-        let is_src_enduser = matches!(src, SrcLocation::EndUser(_));
         let is_enduser_dst = matches!(dst, DstLocation::EndUser(_));
         let is_query_response = matches!(msg, ClientMessage::QueryResponse { .. });
         let is_cmd_error = matches!(msg, ClientMessage::CmdError { .. });
@@ -71,19 +68,6 @@ impl ReceivedMsgAnalysis {
                 "Could not evaluate accumulated msg: {:?}. is_cmd_error: {}, is_query_response: {}, is_enduser_dst: {}",
                 msg, is_cmd_error, is_query_response, is_enduser_dst
             )))
-        } else if is_src_node {
-            Err(Error::InvalidMessage(
-                msg.id(),
-                format!(
-                    "This message should have been sent to client at sn_routing level: {:?}",
-                    msg
-                ),
-            ))
-        } else if is_src_enduser {
-            Err(Error::InvalidMessage(
-                msg.id(),
-                format!("This is not a response from network to client: {:?}", msg),
-            ))
         } else {
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: msg.into(),
