@@ -171,12 +171,10 @@ impl Transfers {
                 self.history(at, *since_version, msg_id, origin).await
             }
             GetStoreCost { bytes, .. } => {
-                let first = self.get_store_cost(*bytes, msg_id, origin).await.convert();
-                let second = Ok(ElderDuty::SwitchNodeJoin(
-                    self.rate_limit.check_network_storage().await,
-                )
-                .into());
-                return Ok(vec![first, second].into());
+                let mut ops = vec![];
+                ops.push(self.get_store_cost(*bytes, msg_id, origin).await.convert());
+                //ops.push(Ok(ElderDuty::SwitchNodeJoin(self.rate_limit.check_network_storage().await).into()));
+                return Ok(ops.into());
             }
         };
         result.convert()
