@@ -9,7 +9,7 @@
 use std::collections::BTreeSet;
 
 use crate::{
-    node::node_ops::{NodeMessagingDuty,  OutgoingMsg},
+    node::node_ops::{NetworkDuties, NodeMessagingDuty, OutgoingMsg},
     Error,
 };
 use crate::{Network, Result};
@@ -32,7 +32,7 @@ impl Messaging {
     pub async fn process_messaging_duty(
         &mut self,
         duty: NodeMessagingDuty,
-    ) -> Result<Vec<NetworkDuty>> {
+    ) -> Result<NetworkDuties> {
         use NodeMessagingDuty::*;
         match duty {
             Send(msg) => self.send(msg).await,
@@ -41,7 +41,7 @@ impl Messaging {
         }
     }
 
-    async fn send(&mut self, msg: OutgoingMsg) -> Result<Vec<NetworkDuty>> {
+    async fn send(&mut self, msg: OutgoingMsg) -> Result<NetworkDuties> {
         let src = if msg.to_be_aggregated {
             SrcLocation::Section(self.network.our_prefix().await)
         } else {
@@ -63,7 +63,7 @@ impl Messaging {
         &mut self,
         targets: BTreeSet<XorName>,
         msg: Message,
-    ) -> Result<Vec<NetworkDuty>> {
+    ) -> Result<NetworkDuties> {
         let name = self.network.our_name().await;
         for target in targets {
             self.network

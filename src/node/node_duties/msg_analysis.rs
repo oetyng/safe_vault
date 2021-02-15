@@ -9,7 +9,7 @@
 use crate::{
     node::node_ops::{
         AdultDuty, ChunkReplicationCmd, ChunkReplicationDuty, ChunkReplicationQuery, ElderDuty,
-        MetadataDuty, NodeDuty, NodeMessagingDuty,  OutgoingMsg, RewardCmd,
+        MetadataDuty, NetworkDuties, NodeDuty, NodeMessagingDuty, OutgoingMsg, RewardCmd,
         RewardDuty, RewardQuery, TransferCmd, TransferDuty, TransferQuery,
     },
     AdultState, Error, NodeState, Result,
@@ -38,7 +38,7 @@ impl ReceivedMsgAnalysis {
         Self { state }
     }
 
-    pub fn evaluate_node_msg(&self, msg: NodeMessage, src: SrcLocation) -> Result<Vec<NetworkDuty>> {
+    pub fn evaluate_node_msg(&self, msg: NodeMessage, src: SrcLocation) -> Result<NetworkDuties> {
         debug!(".. node msg ..");
 
         use SrcLocation::*;
@@ -56,7 +56,7 @@ impl ReceivedMsgAnalysis {
         &self,
         msg: ClientMessage,
         dst: DstLocation,
-    ) -> Result<Vec<NetworkDuty>> {
+    ) -> Result<NetworkDuties> {
         debug!(".. evaluating response to client ..");
 
         if !matches!(dst, DstLocation::EndUser(_)) {
@@ -80,12 +80,11 @@ impl ReceivedMsgAnalysis {
                 ),
             ))
         } else {
-            Ok(NodeMessagingDuty::Send(OutgoingMsg {
+            Ok(NetworkDuties::from(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: msg.into(),
                 dst,
                 to_be_aggregated: false,
-            })
-            .into())
+            })))
         }
     }
 
@@ -93,43 +92,44 @@ impl ReceivedMsgAnalysis {
         &self,
         msg: ClientMessage,
         origin: EndUser,
-    ) -> Result<Vec<NetworkDuty>> {
+    ) -> Result<NetworkDuties> {
         match msg {
             ClientMessage::Query {
                 query: Query::Data(query),
                 id,
                 ..
-            } => Ok(MetadataDuty::ProcessRead { query, id, origin }.into()), // TODO: Fix these for type safety
+            } => Ok(NetworkDuties::from(MetadataDuty::ProcessRead {
+                query,
+                id,
+                origin,
+            })), // TODO: Fix these for type safety
             ClientMessage::Cmd {
                 cmd: Cmd::Data { .. },
                 id,
                 ..
-            } => Ok(TransferDuty::ProcessCmd {
+            } => Ok(NetworkDuties::from(TransferDuty::ProcessCmd {
                 cmd: TransferCmd::ProcessPayment(msg.clone()),
                 msg_id: id,
                 origin: SrcLocation::EndUser(origin),
-            }
-            .into()),
+            })),
             ClientMessage::Cmd {
                 cmd: Cmd::Transfer(cmd),
                 id,
                 ..
-            } => Ok(TransferDuty::ProcessCmd {
+            } => Ok(NetworkDuties::from(TransferDuty::ProcessCmd {
                 cmd: cmd.into(),
                 msg_id: id,
                 origin: SrcLocation::EndUser(origin),
-            }
-            .into()),
+            })),
             ClientMessage::Query {
                 query: Query::Transfer(query),
                 id,
                 ..
-            } => Ok(TransferDuty::ProcessQuery {
+            } => Ok(NetworkDuties::from(TransferDuty::ProcessQuery {
                 query: query.into(),
                 msg_id: id,
                 origin: SrcLocation::EndUser(origin),
-            }
-            .into()),
+            })),
             _ => Err(Error::Logic(format!(
                 "Could not evaluate Client Msg {:?}",
                 msg
@@ -138,7 +138,7 @@ impl ReceivedMsgAnalysis {
     }
 
     /// Accumulated messages (i.e. src == section)
-    fn match_section_msg(&self, msg: NodeMessage, origin: SrcLocation) -> Result<Vec<NetworkDuty>> {
+    fn match_section_msg(&self, msg: NodeMessage, origin: SrcLocation) -> Result<NetworkDuties> {
         debug!("Evaluating received msg for Section: {:?}", msg);
 
         let res = match &msg {
@@ -382,7 +382,7 @@ impl ReceivedMsgAnalysis {
         Ok(res)
     }
 
-    fn match_node_msg(&self, msg: NodeMessage, origin: SrcLocation) -> Result<Vec<NetworkDuty>> {
+    fn match_node_msg(&self, msg: NodeMessage, origin: SrcLocation) -> Result<NetworkDuties> {
         debug!("Evaluating received msg for Node: {:?}", msg);
 
         let res = match &msg {
