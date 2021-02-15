@@ -52,14 +52,8 @@ pub(super) struct BlobRegister {
 }
 
 impl BlobRegister {
-    pub(super) fn new(
-        dbs: ChunkHolderDbs,
-        elder_state: ElderState,
-    ) -> Self {
-        Self {
-            dbs,
-            elder_state,
-        }
+    pub(super) fn new(dbs: ChunkHolderDbs, elder_state: ElderState) -> Self {
+        Self { dbs, elder_state }
     }
 
     pub(super) async fn write(

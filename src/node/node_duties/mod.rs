@@ -284,7 +284,7 @@ impl NodeDuties {
         }
         info!("Assuming Adult duties..");
         let state = AdultState::new(self.network_api.clone()).await?;
-        let duties = AdultDuties::new(&self.node_info, state).await?;
+        let duties = AdultDuties::new(&self.node_info, state.clone()).await?;
         self.node_info.used_space.reset().await;
         self.stage = Stage::Adult(duties);
         self.network_events = NetworkEvents::new(ReceivedMsgAnalysis::new(NodeState::Adult(state)));

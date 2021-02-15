@@ -60,19 +60,25 @@ impl ReceivedMsgAnalysis {
         debug!(".. evaluating response to client ..");
 
         if !matches!(dst, DstLocation::EndUser(_)) {
-            return Err(Error::InvalidMessage(msg.id(), format!(
-                "Accumulated client message needs to have enduser dst! msg: {:?}, dst: {:?}",
-                msg, dst,
-            )));
+            return Err(Error::InvalidMessage(
+                msg.id(),
+                format!(
+                    "Accumulated client message needs to have enduser dst! msg: {:?}, dst: {:?}",
+                    msg, dst,
+                ),
+            ));
         }
 
         let is_query_response = matches!(msg, ClientMessage::QueryResponse { .. });
         let is_cmd_error = matches!(msg, ClientMessage::CmdError { .. });
         if !(is_cmd_error || is_query_response) {
-            Err(Error::InvalidMessage(msg.id(), format!(
-                "Accumulated client msg can only be a cmd error or query response: {:?}.",
-                msg,
-            )))
+            Err(Error::InvalidMessage(
+                msg.id(),
+                format!(
+                    "Accumulated client msg can only be a cmd error or query response: {:?}.",
+                    msg,
+                ),
+            ))
         } else {
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: msg.into(),

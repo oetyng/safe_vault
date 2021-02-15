@@ -7,7 +7,8 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{
-    chunk_store::SequenceChunkStore, error::convert_to_error_message,
+    chunk_store::SequenceChunkStore,
+    error::convert_to_error_message,
     node::node_ops::{NodeMessagingDuty, OutgoingMsg},
     node::NodeInfo,
     Error, Result,
@@ -35,7 +36,7 @@ impl SequenceStorage {
     pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
         let chunks =
             SequenceChunkStore::new(node_info.path(), node_info.used_space.clone()).await?;
-            Ok(Self { chunks })
+        Ok(Self { chunks })
     }
 
     pub(super) async fn read(
