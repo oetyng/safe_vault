@@ -11,7 +11,7 @@ use ed25519_dalek::PublicKey as Ed25519PublicKey;
 use futures::lock::Mutex;
 use serde::Serialize;
 use sn_data_types::{PublicKey, Signature};
-use sn_messaging::{DstLocation, Message, MessageType, SrcLocation};
+use sn_messaging::{DstLocation, EndUser, Message, MessageType, SrcLocation};
 use sn_routing::{
     Config as RoutingConfig, Error as RoutingError, EventStream, Routing as RoutingNode,
     SectionProofChain,
@@ -119,6 +119,17 @@ impl Network {
             .await
             .matches_our_prefix(&XorName(name.0))
             .await
+    }
+
+    pub async fn send_client_msg(
+        &mut self,
+        dst: EndUser,
+        msg: Message,
+    ) -> Result<(), RoutingError> {
+        match msg {
+            Message::Client(msg) => self.routing.lock().await.send_msg_to_client(dst, msg).await,
+            _ => Err(sn_routing::Error::InvalidMessage),
+        }
     }
 
     pub async fn send_message(

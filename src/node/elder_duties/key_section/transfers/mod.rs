@@ -282,7 +282,7 @@ impl Transfers {
                 }
                 .into(),
                 dst: origin.to_dst(),
-                to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                to_be_aggregated: true,
             }));
         }
         let registration = self.replicas.register(&payment).await;
@@ -326,7 +326,7 @@ impl Transfers {
                         }
                         .into(),
                         dst: origin.to_dst(),
-                        to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                        to_be_aggregated: true,
                     }));
                 }
                 info!("Payment: forwarding data..");
@@ -342,7 +342,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: DstLocation::Section(dst_address),
-                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                    to_be_aggregated: true,
                 }))
             }
             Err(e) => {
@@ -359,7 +359,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: origin.to_dst(),
-                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                    to_be_aggregated: true,
                 }))
             }
         }
@@ -439,7 +439,7 @@ impl Transfers {
             }
             .into(),
             dst: origin.to_dst(),
-            to_be_aggregated: false, // TODO: to_be_aggregated: true,
+            to_be_aggregated: true,
         }))
     }
 
@@ -563,7 +563,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: origin.to_dst(),
-                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                    to_be_aggregated: true,
                 }))
             }
         }
@@ -603,7 +603,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: origin.to_dst(),
-                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                    to_be_aggregated: true,
                 }))
             }
         }
@@ -628,7 +628,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: DstLocation::Section(location),
-                    to_be_aggregated: false, // TODO: to_be_aggregated: true, // not necessary, but will be slimmer
+                    to_be_aggregated: true, // not necessary, but will be slimmer
                 }))
             }
             Err(e) => {
@@ -644,7 +644,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: DstLocation::EndUser(EndUser::AllClients(proof.sender())),
-                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                    to_be_aggregated: true,
                 }))
             }
         }
@@ -677,7 +677,7 @@ impl Transfers {
                         }
                         .into(),
                         dst: DstLocation::Section(location),
-                        to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                        to_be_aggregated: true,
                     })
                     .into(),
                 );
@@ -693,7 +693,7 @@ impl Transfers {
                         }
                         .into(),
                         dst: DstLocation::Section(location),
-                        to_be_aggregated: false, // TODO: to_be_aggregated: true, // not necessary, but will be slimmer
+                        to_be_aggregated: true, // not necessary, but will be slimmer
                     })
                     .into(),
                 );
@@ -712,7 +712,7 @@ impl Transfers {
                     }
                     .into(),
                     dst: origin.to_dst(),
-                    to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                    to_be_aggregated: true,
                 })
                 .into())
             }
@@ -748,7 +748,7 @@ impl Transfers {
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
             msg: msg.into(),
             dst: origin.to_dst(),
-            to_be_aggregated: false, // TODO: to_be_aggregated: true,
+            to_be_aggregated: true,
         }))
     }
 

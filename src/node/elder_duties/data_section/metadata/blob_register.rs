@@ -394,7 +394,7 @@ impl BlobRegister {
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: err_msg.into(),
                 dst: DstLocation::EndUser(origin),
-                to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                to_be_aggregated: true,
             }))
         };
 

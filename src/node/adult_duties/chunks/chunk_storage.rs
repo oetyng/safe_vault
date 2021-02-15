@@ -60,7 +60,7 @@ impl ChunkStorage {
                 }
                 .into(),
                 dst: DstLocation::EndUser(origin),
-                to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                to_be_aggregated: true,
             }))
         } else {
             Ok(NodeMessagingDuty::NoOp)
@@ -112,7 +112,7 @@ impl ChunkStorage {
             }
             .into(),
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false, // TODO: to_be_aggregated: true,
+            to_be_aggregated: true,
         }))
     }
 
@@ -161,7 +161,7 @@ impl ChunkStorage {
             }
             .into(),
             dst: origin.to_dst(),
-            to_be_aggregated: false, // TODO: to_be_aggregated: true,
+            to_be_aggregated: true,
         }))
     }
 
@@ -227,7 +227,7 @@ impl ChunkStorage {
                 }
                 .into(),
                 dst: DstLocation::EndUser(origin),
-                to_be_aggregated: false, // TODO: to_be_aggregated: true,
+                to_be_aggregated: true,
             }));
         }
         Ok(NodeMessagingDuty::NoOp)

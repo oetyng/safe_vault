@@ -496,7 +496,7 @@ pub(super) async fn new(node_info: &NodeInfo) -> Result<Self> {
                 }
                 .into(),
                 dst: DstLocation::EndUser(origin),
-                to_be_aggregated: false, // TODO: to_be_aggregated: true, // this needs more consideration...
+                to_be_aggregated: true, // this needs more consideration...
             }))
         } else {
             info!("MapStorage: Writing chunk PASSED!");

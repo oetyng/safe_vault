@@ -477,7 +477,7 @@ impl SequenceStorage {
             }
             .into(),
             dst: DstLocation::Section(origin.name()),
-            to_be_aggregated: false, // TODO: to_be_aggregated: true,
+            to_be_aggregated: true,
         }))
     }
 }
