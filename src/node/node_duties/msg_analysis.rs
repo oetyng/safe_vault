@@ -9,7 +9,7 @@
 use crate::{
     node::node_ops::{
         AdultDuty, ChunkReplicationCmd, ChunkReplicationDuty, ChunkReplicationQuery, ElderDuty,
-        MetadataDuty, NodeDuty, NodeMessagingDuty, NodeOperation, OutgoingMsg, RewardCmd,
+        MetadataDuty, NodeDuty, NodeMessagingDuty,  OutgoingMsg, RewardCmd,
         RewardDuty, RewardQuery, TransferCmd, TransferDuty, TransferQuery,
     },
     AdultState, Error, NodeState, Result,
@@ -38,7 +38,7 @@ impl ReceivedMsgAnalysis {
         Self { state }
     }
 
-    pub fn evaluate_node_msg(&self, msg: NodeMessage, src: SrcLocation) -> Result<NodeOperation> {
+    pub fn evaluate_node_msg(&self, msg: NodeMessage, src: SrcLocation) -> Result<Vec<NetworkDuty>> {
         debug!(".. node msg ..");
 
         use SrcLocation::*;
@@ -56,7 +56,7 @@ impl ReceivedMsgAnalysis {
         &self,
         msg: ClientMessage,
         dst: DstLocation,
-    ) -> Result<NodeOperation> {
+    ) -> Result<Vec<NetworkDuty>> {
         debug!(".. evaluating response to client ..");
 
         if !matches!(dst, DstLocation::EndUser(_)) {
@@ -93,7 +93,7 @@ impl ReceivedMsgAnalysis {
         &self,
         msg: ClientMessage,
         origin: EndUser,
-    ) -> Result<NodeOperation> {
+    ) -> Result<Vec<NetworkDuty>> {
         match msg {
             ClientMessage::Query {
                 query: Query::Data(query),
@@ -138,7 +138,7 @@ impl ReceivedMsgAnalysis {
     }
 
     /// Accumulated messages (i.e. src == section)
-    fn match_section_msg(&self, msg: NodeMessage, origin: SrcLocation) -> Result<NodeOperation> {
+    fn match_section_msg(&self, msg: NodeMessage, origin: SrcLocation) -> Result<Vec<NetworkDuty>> {
         debug!("Evaluating received msg for Section: {:?}", msg);
 
         let res = match &msg {
@@ -382,7 +382,7 @@ impl ReceivedMsgAnalysis {
         Ok(res)
     }
 
-    fn match_node_msg(&self, msg: NodeMessage, origin: SrcLocation) -> Result<NodeOperation> {
+    fn match_node_msg(&self, msg: NodeMessage, origin: SrcLocation) -> Result<Vec<NetworkDuty>> {
         debug!("Evaluating received msg for Node: {:?}", msg);
 
         let res = match &msg {
