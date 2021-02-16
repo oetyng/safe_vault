@@ -30,8 +30,8 @@ use sn_data_types::{
     TransferPropagated, WalletInfo,
 };
 use sn_messaging::{
-    client::{Message, MessageId, NodeCmd, NodeQuery, NodeSystemCmd, NodeTransferQuery},
-    DstLocation, SrcLocation,
+    client::{Message, NodeCmd, NodeQuery, NodeRewardQuery, NodeSystemCmd},
+    DstLocation, MessageId, SrcLocation,
 };
 use std::collections::{BTreeMap, VecDeque};
 
@@ -285,7 +285,7 @@ impl NodeDuties {
         }
         info!("Assuming Adult duties..");
         let state = AdultState::new(self.network_api.clone()).await?;
-        let duties = AdultDuties::new(&self.node_info, state).await?;
+        let duties = AdultDuties::new(&self.node_info, state.clone()).await?;
         self.node_info.used_space.reset().await;
         self.stage = Stage::Adult(duties);
         self.network_events = NetworkEvents::new(ReceivedMsgAnalysis::new(NodeState::Adult(state)));
@@ -366,10 +366,9 @@ impl NodeDuties {
             // must get the above wrapping instance before overwriting stage
             self.stage = Stage::AssumingElderDuties(VecDeque::new());
 
-            use NodeTransferQuery::CatchUpWithSectionWallet;
             return Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: Message::NodeQuery {
-                    query: NodeQuery::Transfers(CatchUpWithSectionWallet(wallet_id)),
+                    query: NodeQuery::Rewards(NodeRewardQuery::GetSectionWalletHistory),
                     id: MessageId::new(),
                 },
                 dst: DstLocation::Section(wallet_id.into()),

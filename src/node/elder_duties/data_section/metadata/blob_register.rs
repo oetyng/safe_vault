@@ -17,11 +17,10 @@ use serde::{Deserialize, Serialize};
 use sn_data_types::{Blob, BlobAddress, Error as DtError, PublicKey, Result as NdResult};
 use sn_messaging::{
     client::{
-        BlobRead, BlobWrite, CmdError, DataQuery, Error as ErrorMessage, Message, MessageId,
-        NodeCmd, NodeDataCmd, Query, QueryResponse,
+        BlobRead, BlobWrite, CmdError, DataCmd, DataQuery, Error as ErrorMessage, Message, NodeCmd,
+        NodeSystemCmd, Query, QueryResponse,
     },
-    location::User,
-    DstLocation, SrcLocation,
+    DstLocation, EndUser, MessageId, SrcLocation,
 };
 
 use std::{
@@ -51,21 +50,15 @@ pub(super) struct BlobRegister {
 }
 
 impl BlobRegister {
-    pub(super) fn new(
-        dbs: ChunkHolderDbs,
-        elder_state: ElderState,
-    ) -> Self {
-        Self {
-            dbs,
-            elder_state,
-        }
+    pub(super) fn new(dbs: ChunkHolderDbs, elder_state: ElderState) -> Self {
+        Self { dbs, elder_state }
     }
 
     pub(super) async fn write(
         &mut self,
         write: BlobWrite,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         use BlobWrite::*;
         match write {
@@ -78,7 +71,7 @@ impl BlobRegister {
         &mut self,
         data: Blob,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         // If the data already exist, check the existing no of copies.
         // If no of copies are less then required, then continue with the put request.
@@ -92,7 +85,7 @@ impl BlobRegister {
                         msg: Message::CmdError {
                             error: CmdError::Data(ErrorMessage::DataExists),
                             id: MessageId::new(),
-                            cmd_origin: SrcLocation::User(origin),
+                            cmd_origin: SrcLocation::EndUser(origin),
                             correlation_id: msg_id,
                         },
                         dst: DstLocation::Section(origin.name()),
@@ -136,7 +129,10 @@ impl BlobRegister {
             info!("Results is not empty!");
         }
         let msg = Message::NodeCmd {
-            cmd: NodeCmd::Data(NodeDataCmd::Blob(BlobWrite::New(data))),
+            cmd: NodeCmd::Data {
+                cmd: DataCmd::Blob(BlobWrite::New(data)),
+                origin,
+            },
             id: msg_id,
         };
         Ok(NodeMessagingDuty::SendToAdults {
@@ -149,14 +145,14 @@ impl BlobRegister {
         &self,
         error: Error,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let message_error = convert_to_error_message(error)?;
         Ok(NodeMessagingDuty::Send(OutgoingMsg {
             msg: Message::CmdError {
                 error: CmdError::Data(message_error),
                 id: MessageId::new(),
-                cmd_origin: SrcLocation::User(origin),
+                cmd_origin: SrcLocation::EndUser(origin),
                 correlation_id: msg_id,
             },
             dst: DstLocation::Section(origin.name()),
@@ -168,7 +164,7 @@ impl BlobRegister {
         &mut self,
         address: BlobAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let metadata = match self.get_metadata_for(address) {
             Ok(metadata) => metadata,
@@ -195,7 +191,10 @@ impl BlobRegister {
         if !results.is_empty() {}
 
         let msg = Message::NodeCmd {
-            cmd: NodeCmd::Data(NodeDataCmd::Blob(BlobWrite::DeletePrivate(address))),
+            cmd: NodeCmd::Data {
+                cmd: DataCmd::Blob(BlobWrite::DeletePrivate(address)),
+                origin,
+            },
             id: msg_id,
         };
         Ok(NodeMessagingDuty::SendToAdults {
@@ -208,7 +207,7 @@ impl BlobRegister {
         &mut self,
         blob_address: BlobAddress,
         holder: XorName,
-        origin: User,
+        origin: EndUser,
     ) -> Result<()> {
         // TODO -
         // - if Err, we need to flag this sender as "full" (i.e. add to self.full_adults, try on
@@ -318,7 +317,6 @@ impl BlobRegister {
         current_holders: BTreeSet<XorName>,
     ) -> Vec<NodeOperation> {
         use NodeCmd::*;
-        use NodeDataCmd::*;
         let mut node_ops = Vec::new();
         let messages = self
             .get_new_holders_for_chunk(&address)
@@ -329,7 +327,7 @@ impl BlobRegister {
                 info!("Sending replicate-chunk cmd to NewHolder {:?}", new_holder);
                 (
                     Message::NodeCmd {
-                        cmd: Data(ReplicateChunk {
+                        cmd: System(NodeSystemCmd::ReplicateChunk {
                             new_holder,
                             address,
                             current_holders: current_holders.clone(),
@@ -357,7 +355,7 @@ impl BlobRegister {
         &self,
         read: &BlobRead,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         use BlobRead::*;
         match read {
@@ -369,19 +367,19 @@ impl BlobRegister {
         &self,
         address: BlobAddress,
         msg_id: MessageId,
-        origin: User,
+        origin: EndUser,
     ) -> Result<NodeMessagingDuty> {
         let query_error = |error: Error| async {
             let message_error = convert_to_error_message(error)?;
             let err_msg = Message::QueryResponse {
                 response: QueryResponse::GetBlob(Err(message_error)),
                 id: MessageId::in_response_to(&msg_id),
-                query_origin: SrcLocation::User(origin),
+                query_origin: SrcLocation::EndUser(origin),
                 correlation_id: msg_id,
             };
             Ok(NodeMessagingDuty::Send(OutgoingMsg {
                 msg: err_msg,
-                dst: DstLocation::User(origin),
+                dst: DstLocation::EndUser(origin),
                 to_be_aggregated: true,
             }))
         };
