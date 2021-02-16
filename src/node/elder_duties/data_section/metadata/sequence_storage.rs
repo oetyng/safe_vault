@@ -140,7 +140,11 @@ impl SequenceStorage {
         let result = match self.chunks.get(&address).and_then(|sequence| {
             // TODO - Sequence::check_permission() doesn't support Delete yet in safe-nd
             if sequence.address().is_public() {
-                return Err(Error::InvalidOperation);
+                return Err(Error::InvalidMessage(
+                    msg_id,
+                    "Sequence::check_permission() doesn't support Delete yet in safe-nd"
+                        .to_string(),
+                ));
             }
 
             let public_key = *origin.id();

@@ -313,7 +313,7 @@ impl Rewards {
                 id: MessageId::new(),
             },
             dst: DstLocation::Section(old_node_id),
-            to_be_aggregated: false,
+            to_be_aggregated: true,
         }))
     }
 
@@ -458,7 +458,7 @@ impl Rewards {
                 correlation_id: msg_id,
                 query_origin: origin,
             },
-            dst: origin.to_dst(),
+            dst: DstLocation::Section(new_node_id),
             to_be_aggregated: true,
         }))
     }

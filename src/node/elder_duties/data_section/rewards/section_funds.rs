@@ -120,7 +120,7 @@ impl SectionFunds {
                 id: MessageId::new(),
             },
             dst: DstLocation::Section(new_wallet.into()),
-            to_be_aggregated: false,
+            to_be_aggregated: true,
         }))
     }
 

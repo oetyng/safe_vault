@@ -34,8 +34,7 @@ use sn_messaging::{
     },
     DstLocation, EndUser, MessageId, SrcLocation,
 };
-
-// NB: This approach is not entirely good, so will need to be improved.
+use sn_routing::XorName;
 
 /// Evaluates remote msgs from the network,
 /// i.e. not msgs sent directly from a client.
@@ -48,6 +47,10 @@ impl ReceivedMsgAnalysis {
         Self { state }
     }
 
+    pub fn name(&self) -> XorName {
+        self.state.node_name()
+    }
+
     pub fn evaluate(
         &self,
         msg: Message,
@@ -57,9 +60,12 @@ impl ReceivedMsgAnalysis {
         debug!("Evaluating received msg..");
         let msg_id = msg.id();
         if let SrcLocation::EndUser(origin) = src {
-            let res = self.match_user_sent_msg(msg, origin);
+            let res = self.match_user_sent_msg(msg.clone(), origin);
             if let NodeOperation::NoOp = res {
-                return Err(Error::InvalidMessage(msg_id, format!("")));
+                return Err(Error::InvalidMessage(
+                    msg_id,
+                    format!("No match for user msg: {:?}", msg),
+                ));
             }
             return Ok(res);
         }
@@ -70,7 +76,10 @@ impl ReceivedMsgAnalysis {
         match &dst {
             DstLocation::Section(_name) => self.match_section_msg(msg, src),
             DstLocation::Node(_name) => self.match_node_msg(msg, src),
-            _ => Err(Error::InvalidOperation),
+            _ => Err(Error::InvalidMessage(
+                msg_id,
+                format!("Invalid dst: {:?}", msg),
+            )),
         }
     }
 
@@ -120,27 +129,6 @@ impl ReceivedMsgAnalysis {
         debug!("Evaluating received msg for Section: {:?}", msg);
 
         let res = match &msg {
-            //
-            // ------ wallet register ------
-            Message::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::RegisterWallet { wallet, .. }),
-                id,
-                ..
-            } => RewardDuty::ProcessCmd {
-                cmd: RewardCmd::SetNodeWallet {
-                    wallet_id: *wallet,
-                    node_id: origin.to_dst().name().unwrap(),
-                },
-                msg_id: *id,
-                origin,
-            }
-            .into(),
-            //
-            // ------ system cmd ------
-            Message::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::StorageFull { node_id, .. }),
-                ..
-            } => ElderDuty::StorageFull { node_id: *node_id }.into(),
             //
             // ------ metadata ------
             Message::NodeQuery {
@@ -352,24 +340,6 @@ impl ReceivedMsgAnalysis {
                 origin,
             }
             .into(),
-            //
-            // ------ node duties ------
-            Message::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis { credit, sig }),
-                ..
-            } => NodeDuty::ReceiveGenesisProposal {
-                credit: credit.clone(),
-                sig: sig.clone(),
-            }
-            .into(),
-            Message::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::AccumulateGenesis { signed_credit, sig }),
-                ..
-            } => NodeDuty::ReceiveGenesisAccumulation {
-                signed_credit: signed_credit.clone(),
-                sig: sig.clone(),
-            }
-            .into(),
             // // ... so... we accumulate a query response, hmm
             // Message::NodeQueryResponse {
             //     response:
@@ -404,6 +374,45 @@ impl ReceivedMsgAnalysis {
         debug!("Evaluating received msg for Node: {:?}", msg);
 
         let res = match &msg {
+            //
+            // ------ wallet register ------
+            Message::NodeCmd {
+                cmd: NodeCmd::System(NodeSystemCmd::RegisterWallet { wallet, .. }),
+                id,
+                ..
+            } => RewardDuty::ProcessCmd {
+                cmd: RewardCmd::SetNodeWallet {
+                    wallet_id: *wallet,
+                    node_id: origin.to_dst().name().unwrap(),
+                },
+                msg_id: *id,
+                origin,
+            }
+            .into(),
+            //
+            // ------ system cmd ------
+            Message::NodeCmd {
+                cmd: NodeCmd::System(NodeSystemCmd::StorageFull { node_id, .. }),
+                ..
+            } => ElderDuty::StorageFull { node_id: *node_id }.into(),
+            //
+            // ------ node duties ------
+            Message::NodeCmd {
+                cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis { credit, sig }),
+                ..
+            } => NodeDuty::ReceiveGenesisProposal {
+                credit: credit.clone(),
+                sig: sig.clone(),
+            }
+            .into(),
+            Message::NodeCmd {
+                cmd: NodeCmd::System(NodeSystemCmd::AccumulateGenesis { signed_credit, sig }),
+                ..
+            } => NodeDuty::ReceiveGenesisAccumulation {
+                signed_credit: signed_credit.clone(),
+                sig: sig.clone(),
+            }
+            .into(),
             //
             // ------ chunk replication ------
             // query response from adult cannot be accumulated
@@ -488,7 +497,9 @@ impl ReceivedMsgAnalysis {
         if let NodeState::Adult(state) = &self.state {
             Ok(state)
         } else {
-            Err(Error::InvalidOperation)
+            Err(Error::InvalidOperation(
+                "Tried to get adult state when there was none.".to_string(),
+            ))
         }
     }
 }
