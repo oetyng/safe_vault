@@ -8,20 +8,9 @@
 
 use crate::{
     node::node_ops::{
-        AdultDuty,
-        ChunkReplicationCmd,
-        ChunkReplicationDuty,
-        ChunkReplicationQuery,
-        ElderDuty,
-        MetadataDuty,
-        NodeDuty,
-        NodeOperation,
-        RewardCmd,
-        RewardDuty, // ChunkStoreDuty
-        RewardQuery,
-        TransferCmd,
-        TransferDuty,
-        TransferQuery,
+        AdultDuty, ChunkReplicationCmd, ChunkReplicationDuty, ChunkReplicationQuery,
+        ChunkStoreDuty, ElderDuty, MetadataDuty, NodeDuty, NodeOperation, RewardCmd, RewardDuty,
+        RewardQuery, TransferCmd, TransferDuty, TransferQuery,
     },
     AdultState, Error, NodeState, Result,
 };
@@ -132,7 +121,7 @@ impl ReceivedMsgAnalysis {
             //
             // ------ metadata ------
             Message::NodeQuery {
-                query: NodeQuery::Data { query, origin },
+                query: NodeQuery::Metadata { query, origin },
                 id,
                 ..
             } => MetadataDuty::ProcessRead {
@@ -142,7 +131,7 @@ impl ReceivedMsgAnalysis {
             }
             .into(),
             Message::NodeCmd {
-                cmd: NodeCmd::Data { cmd, origin },
+                cmd: NodeCmd::Metadata { cmd, origin },
                 id,
                 ..
             } => MetadataDuty::ProcessWrite {
@@ -153,34 +142,26 @@ impl ReceivedMsgAnalysis {
             .into(),
             //
             // ------ adult ------
-            // Message::NodeQuery {
-            //     query:
-            //         NodeQuery::Data {
-            //             query: DataQuery::Blob(read),
-            //             origin,
-            //         },
-            //     id,
-            //     ..
-            // } => AdultDuty::RunAsChunkStore(ChunkStoreDuty::ReadChunk {
-            //     read: read.clone(),
-            //     id: *id,
-            //     origin: SrcLocation::EndUser(*origin),
-            // })
-            // .into(),
-            // Message::NodeCmd {
-            //     cmd:
-            //         NodeCmd::Data {
-            //             cmd: DataCmd::Blob(cmd),
-            //             origin,
-            //         },
-            //     id,
-            //     ..
-            // } => AdultDuty::RunAsChunkStore(ChunkStoreDuty::WriteChunk {
-            //     write: cmd.clone(),
-            //     id: *id,
-            //     origin: SrcLocation::EndUser(*origin),
-            // })
-            // .into(),
+            Message::NodeQuery {
+                query: NodeQuery::Chunks { query, origin },
+                id,
+                ..
+            } => AdultDuty::RunAsChunkStore(ChunkStoreDuty::ReadChunk {
+                read: query.clone(),
+                id: *id,
+                origin: *origin,
+            })
+            .into(),
+            Message::NodeCmd {
+                cmd: NodeCmd::Chunks { cmd, origin },
+                id,
+                ..
+            } => AdultDuty::RunAsChunkStore(ChunkStoreDuty::WriteChunk {
+                write: cmd.clone(),
+                id: *id,
+                origin: *origin,
+            })
+            .into(),
             //
             // ------ chunk replication ------
             Message::NodeQuery {
@@ -340,17 +321,6 @@ impl ReceivedMsgAnalysis {
                 origin,
             }
             .into(),
-            // // ... so... we accumulate a query response, hmm
-            // Message::NodeQueryResponse {
-            //     response:
-            //         NodeQueryResponse::Rewards(
-            //             NodeRewardQueryResponse::GetSectionWalletHistory(info),
-            //         ),
-            //     ..
-            // } => {
-            //     info!("We have a GetSectionWalletHistory query response!");
-            //     NodeDuty::InitSectionWallet(info.clone()).into()
-            // }
             Message::NodeEvent {
                 event: NodeEvent::SectionPayoutRegistered { from, to },
                 ..

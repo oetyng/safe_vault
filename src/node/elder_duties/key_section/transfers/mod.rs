@@ -323,7 +323,7 @@ impl Transfers {
                 // informed of this transfer as well..
                 Ok(NodeMessagingDuty::Send(OutgoingMsg {
                     msg: Message::NodeCmd {
-                        cmd: NodeCmd::Data {
+                        cmd: NodeCmd::Metadata {
                             cmd: data_cmd.clone(),
                             origin,
                         },
