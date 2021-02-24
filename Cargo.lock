@@ -1305,9 +1305,9 @@ dependencies = [
 
 [[package]]
 name = "lru_time_cache"
-version = "0.11.7"
+version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ce7a913007f8d825242cd5017962f09bc3f19f91a382498c1e6756c842e3908"
+checksum = "da6e3532e40db8c80ce84d6b5e1d9ae555ad47e57ce3344e1c072f5cb9b7fdc8"
 
 [[package]]
 name = "maplit"
@@ -1505,9 +1505,9 @@ dependencies = [
 
 [[package]]
 name = "pem"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4c220d01f863d13d96ca82359d1e81e64a7c6bf0637bcde7b2349630addf0c6"
+checksum = "fd56cbd21fea48d0c440b41cd69c589faacade08c992d9a54e471b79d0fd13eb"
 dependencies = [
  "base64 0.13.0",
  "once_cell",
@@ -1659,9 +1659,9 @@ dependencies = [
 
 [[package]]
 name = "qp2p"
-version = "0.9.22"
+version = "0.9.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e9942ea11e9a97d6cf9a533960663c5ab049078e17e40ba7ea1491fb1675b15"
+checksum = "8a9c892a5bae3cac8eacf2773cb18fecfcf6828e3009bfdaddf7daa0bd7ba7e3"
 dependencies = [
  "base64 0.12.3",
  "bincode",
@@ -2751,9 +2751,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43f080ea7e4107844ef4766459426fa2d5c1ada2e47edba05dc7fa99d9629f47"
+checksum = "a8a9bd1db7706f2373a190b0d067146caa39350c486f3d455b0e33b431f94c07"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
