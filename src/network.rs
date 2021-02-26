@@ -12,7 +12,7 @@ use ed25519_dalek::PublicKey as Ed25519PublicKey;
 use futures::lock::Mutex;
 use serde::Serialize;
 use sn_data_types::{PublicKey, Signature};
-use sn_messaging::{DstLocation, SrcLocation};
+use sn_messaging::Itinerary;
 use sn_routing::{
     Config as RoutingConfig, Error as RoutingError, EventStream, Routing as RoutingNode,
     SectionProofChain,
@@ -119,15 +119,10 @@ impl Network {
 
     pub async fn send_message(
         &mut self,
-        src: SrcLocation,
-        dst: DstLocation,
+        itry: Itinerary,
         content: Bytes,
     ) -> Result<(), RoutingError> {
-        self.routing
-            .lock()
-            .await
-            .send_message(src, dst, content)
-            .await
+        self.routing.lock().await.send_message(itry, content).await
     }
 
     pub async fn set_joins_allowed(&mut self, joins_allowed: bool) -> Result<()> {

@@ -21,7 +21,7 @@ use sn_data_types::{
 };
 use sn_messaging::{
     client::{CmdError, Message, QueryResponse, SequenceRead, SequenceWrite},
-    DstLocation, EndUser, MessageId, SrcLocation,
+    Aggregation, DstLocation, EndUser, MessageId, SrcLocation,
 };
 
 use std::fmt::{self, Display, Formatter};
@@ -117,7 +117,7 @@ impl SequenceStorage {
                 target_section_pk: None,
             },
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false,
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
         }))
     }
 
@@ -189,7 +189,7 @@ impl SequenceStorage {
                 target_section_pk: None,
             },
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false,
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
         }))
     }
 
@@ -217,7 +217,7 @@ impl SequenceStorage {
                 target_section_pk: None,
             },
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false,
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
         }))
     }
 
@@ -250,7 +250,7 @@ impl SequenceStorage {
                 target_section_pk: None,
             },
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false,
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
         }))
     }
 
@@ -280,7 +280,7 @@ impl SequenceStorage {
                 target_section_pk: None,
             },
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false,
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
         }))
     }
 
@@ -313,7 +313,7 @@ impl SequenceStorage {
                 target_section_pk: None,
             },
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false,
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
         }))
     }
 
@@ -346,7 +346,7 @@ impl SequenceStorage {
                 target_section_pk: None,
             },
             dst: DstLocation::EndUser(origin),
-            to_be_aggregated: false,
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
         }))
     }
 
@@ -477,7 +477,7 @@ impl SequenceStorage {
                 target_section_pk: None,
             },
             dst: DstLocation::Section(origin.name()),
-            to_be_aggregated: false, // TODO: to_be_aggregated: true,
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
         }))
     }
 }
