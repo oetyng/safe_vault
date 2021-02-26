@@ -41,25 +41,12 @@ impl Messaging {
     }
 
     async fn send(&mut self, msg: OutgoingMsg) -> Result<NetworkDuties> {
-        let itinerary = if msg.to_be_aggregated {
-            let src = SrcLocation::Section(self.network.our_name().await);
-            Itinerary {
-                src,
-                dst: msg.dst,
-                aggregation: Aggregation::AtSource,
-            }
-        } else {
-            let src = SrcLocation::Node(self.network.our_name().await);
-            Itinerary {
-                src,
-                dst: msg.dst,
-                aggregation: Aggregation::None,
-            }
+        let itry = Itinerary {
+            src: SrcLocation::Node(self.network.our_name().await),
+            dst: msg.dst,
+            aggregation: msg.aggregation,
         };
-        let result = self
-            .network
-            .send_message(itinerary, msg.msg.serialize()?)
-            .await;
+        let result = self.network.send_message(itry, msg.msg.serialize()?).await;
 
         result.map_or_else(
             |err| {
@@ -79,11 +66,14 @@ impl Messaging {
         let bytes = &msg.serialize()?;
         for target in targets {
             self.network
-                .send_message(Itinerary {
-                    src: SrcLocation::Node(name),
-                    dst: DstLocation::Node(XorName(target.0)),
-                    aggregation: Aggregation::AtDestination,
-                }, bytes.clone())
+                .send_message(
+                    Itinerary {
+                        src: SrcLocation::Node(name),
+                        dst: DstLocation::Node(XorName(target.0)),
+                        aggregation: Aggregation::AtDestination,
+                    },
+                    bytes.clone(),
+                )
                 .await
                 .map_or_else(
                     |err| {
