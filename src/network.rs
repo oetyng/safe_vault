@@ -14,8 +14,8 @@ use serde::Serialize;
 use sn_data_types::{PublicKey, Signature};
 use sn_messaging::Itinerary;
 use sn_routing::{
-    Config as RoutingConfig, Error as RoutingError, EventStream, Routing as RoutingNode,
-    SectionChain,
+    Config as RoutingConfig, ElderKnowledge, Error as RoutingError, EventStream,
+    Routing as RoutingNode, SectionChain,
 };
 use std::collections::BTreeSet;
 use std::net::SocketAddr;
@@ -66,6 +66,19 @@ impl Network {
             .await
             .map_err(Error::Routing)?;
         Ok(share)
+    }
+
+    /// https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+is%3Aopen+eval_order_dependence
+    #[allow(clippy::eval_order_dependence)]
+    pub async fn genesis_elder_knowledge(&self) -> Result<ElderKnowledge> {
+        Ok(ElderKnowledge {
+            prefix: self.our_prefix().await,
+            section_key_set: self.public_key_set().await?,
+            our_key_set_index: self.our_index().await?,
+            sibling_key: None,
+            elders: self.our_elder_names().await,
+            section_chain: self.section_chain().await,
+        })
     }
 
     pub async fn age(&self) -> u8 {

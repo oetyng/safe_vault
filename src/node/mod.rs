@@ -98,7 +98,9 @@ impl Node {
         let init_ops = match age_group {
             Infant => Ok(vec![]),
             Adult => Ok(NetworkDuties::from(node_ops::NodeDuty::AssumeAdultDuties)),
-            Elder => Ok(NetworkDuties::from(node_ops::NodeDuty::AssumeElderDuties)),
+            Elder => Ok(NetworkDuties::from(node_ops::NodeDuty::AssumeElderDuties(
+                network_api.genesis_elder_knowledge().await?,
+            ))),
         };
 
         let mut node = Self {

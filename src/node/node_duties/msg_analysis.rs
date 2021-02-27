@@ -12,7 +12,7 @@ use crate::{
         ChunkStoreDuty, ElderDuty, MetadataDuty, NetworkDuties, NodeDuty, RewardCmd, RewardDuty,
         RewardQuery, TransferCmd, TransferDuty, TransferQuery,
     },
-    AdultState, Error, NodeState, Result,
+    Error, NodeState, Result,
 };
 use log::{debug, info};
 use sn_messaging::{
@@ -186,7 +186,6 @@ impl ReceivedMsgAnalysis {
                 ..
             } => {
                 info!("Verifying GetChunk query!");
-                let _proof_chain = self.adult_state()?.section_proof_chain();
 
                 // Recreate original MessageId from Section
                 let msg_id = MessageId::combine(vec![*address.name(), *new_holder]);
@@ -504,15 +503,5 @@ impl ReceivedMsgAnalysis {
             }
         };
         Ok(res)
-    }
-
-    fn adult_state(&self) -> Result<&AdultState> {
-        if let NodeState::Adult(state) = &self.state {
-            Ok(state)
-        } else {
-            Err(Error::InvalidOperation(
-                "Tried to get adult state when there was none.".to_string(),
-            ))
-        }
     }
 }

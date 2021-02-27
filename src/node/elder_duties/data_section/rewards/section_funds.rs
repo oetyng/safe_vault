@@ -44,11 +44,6 @@ pub struct Payout {
     pub node_id: XorName,
 }
 
-struct PendingTransition {
-    next_actor_state: ElderState,
-    sibling_key: Option<PublicKey>,
-}
-
 struct State {
     /// Incoming payout requests are queued here.
     /// It is queued when we already have a payout in flight,
@@ -56,7 +51,7 @@ struct State {
     queued_payouts: VecDeque<Payout>,
     payout_in_flight: Option<Payout>,
     finished: BTreeSet<XorName>, // this set grows within acceptable bounds, since transitions do not happen that often, and at every section split, the set is cleared..
-    pending_transition: Option<PendingTransition>,
+    pending_transition: Option<ElderState>,
     /// While awaiting payout completion
     next_actor: Option<SectionActor>, // we could do a queue here, and when starting transition skip all but the last one, but that is also prone to edge case problems..
     split_state: Option<SplitState>,
@@ -111,11 +106,10 @@ impl SectionFunds {
     pub async fn init_transition(
         &mut self,
         next_actor_state: ElderState,
-        sibling_key: Option<PublicKey>,
     ) -> Result<NodeMessagingDuty> {
         info!(">>> ??? Initiating transition to new section wallet...");
-        if self.has_initiated_transition() {
-            info!(">>> ??? has_initiated_transition");
+        if self.has_pending_transition() {
+            info!(">>> ??? has_pending_transition");
             return Err(Error::Logic("Already initiated transition".to_string()));
         } else if self.is_transitioning() {
             info!(">>> ??? is_transitioning");
@@ -124,18 +118,15 @@ impl SectionFunds {
             ));
         }
 
-        // When we have a payout in flight, we defer the transition.
-        if self.has_payout_in_flight() {
-            info!(">>> ???? has_payout_in_flight");
-            return Err(Error::Logic("Has payout in flight".to_string()));
-        }
+        // // When we have a payout in flight, we defer the transition.
+        // if self.has_payout_in_flight() {
+        //     info!(">>> ???? has_payout_in_flight");
+        //     return Err(Error::Logic("Has payout in flight".to_string()));
+        // }
 
         let new_wallet = next_actor_state.section_public_key();
 
-        self.state.pending_transition = Some(PendingTransition {
-            next_actor_state,
-            sibling_key,
-        });
+        self.state.pending_transition = Some(next_actor_state);
 
         info!(
             ">>>> ??? sending transfer setup query!, pending state has been set? {:?}",
@@ -167,7 +158,8 @@ impl SectionFunds {
         }
         if let Some(pending_transition) = self.state.pending_transition.take() {
             debug!(">>>> got a pending transition!!!!!!!!");
-            let signing = ElderSigning::new(pending_transition.next_actor_state);
+            let sibling_key = pending_transition.sibling_key();
+            let signing = ElderSigning::new(pending_transition);
             let actor = TransferActor::from_info(
                 signing,
                 WalletInfo {
@@ -208,7 +200,7 @@ impl SectionFunds {
             }
 
             let mut transfers: NetworkDuties = vec![];
-            self.state.split_state = if let Some(sibling_key) = pending_transition.sibling_key {
+            self.state.split_state = if let Some(sibling_key) = sibling_key {
                 debug!(
                     ">>>> Split happening, we need to transfer to TWO wallets, for each sibling"
                 );
@@ -307,7 +299,7 @@ impl SectionFunds {
             return Ok(NodeMessagingDuty::NoOp);
         }
         // if we are transitioning, or having payout in flight, the payout is deferred.
-        if self.is_transitioning() || self.has_payout_in_flight() {
+        if !self.can_initiate_payout() {
             self.state.queued_payouts.push_back(payout);
             return Ok(NodeMessagingDuty::NoOp);
         }
@@ -455,6 +447,10 @@ impl SectionFunds {
             ));
         }
 
+        if self.is_splitting() {
+            return Ok(false);
+        }
+
         // Set the next actor to be our current.
         self.actor = self
             .state
@@ -491,12 +487,23 @@ impl SectionFunds {
         false
     }
 
-    pub fn has_initiated_transition(&self) -> bool {
+    pub fn can_initiate_payout(&self) -> bool {
+        !(self.has_pending_transition()
+            || self.is_transitioning()
+            || self.is_splitting()
+            || self.has_payout_in_flight())
+    }
+
+    pub fn has_pending_transition(&self) -> bool {
         self.state.pending_transition.is_some()
     }
 
     fn is_transitioning(&self) -> bool {
         self.state.next_actor.is_some()
+    }
+
+    fn is_splitting(&self) -> bool {
+        self.state.split_state.is_some()
     }
 
     fn has_payout_in_flight(&self) -> bool {

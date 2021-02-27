@@ -129,12 +129,9 @@ impl ElderDuties {
     pub async fn initiate_elder_change(
         &mut self,
         elder_state: ElderState,
-        sibling_key: Option<PublicKey>,
     ) -> Result<NetworkDuties> {
         // 1. First we must update data section..
-        self.data_section
-            .initiate_elder_change(elder_state, sibling_key)
-            .await
+        self.data_section.initiate_elder_change(elder_state).await
     }
 
     ///

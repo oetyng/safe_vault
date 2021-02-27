@@ -11,9 +11,8 @@ use crate::node::node_ops::{ElderDuty, NetworkDuties, NetworkDuty, NodeDuty};
 use crate::{Network, Result};
 use hex_fmt::HexFmt;
 use log::{info, trace};
-use sn_data_types::PublicKey;
 use sn_messaging::{client::Message, DstLocation, SrcLocation};
-use sn_routing::{Event as RoutingEvent, NodeElderChange, MIN_AGE};
+use sn_routing::{Event as RoutingEvent, NodeElderStatus, MIN_AGE};
 use xor_name::XorName;
 
 /// Maps events from the transport layer
@@ -104,32 +103,16 @@ impl NetworkEvents {
                 );
                 self.analysis.evaluate(Message::from(content)?, src, dst)
             }
-            RoutingEvent::EldersChanged {
-                key,
-                elders,
-                prefix,
-                self_status_change,
-                sibling_key,
-            } => {
-                let mut duties: NetworkDuties = match self_status_change {
-                    NodeElderChange::Promoted => NetworkDuties::from(NodeDuty::AssumeElderDuties),
-                    NodeElderChange::Demoted => NetworkDuties::from(NodeDuty::AssumeAdultDuties),
-                    NodeElderChange::None => vec![],
+            RoutingEvent::EldersChanged(self_status_change) => {
+                use NodeElderStatus::*;
+                let duty = match self_status_change {
+                    Demoted => NodeDuty::AssumeAdultDuties,
+                    Promoted(elder_knowledge) => NodeDuty::AssumeElderDuties(elder_knowledge),
+                    StillElder(elder_knowledge) => NodeDuty::InitiateElderChange(elder_knowledge),
+                    StillAdult => return Ok(vec![]),
                 };
 
-                let mut sibling_pk = None;
-                if let Some(pk) = sibling_key {
-                    sibling_pk = Some(PublicKey::Bls(pk));
-                }
-
-                duties.push(NetworkDuty::from(NodeDuty::InitiateElderChange {
-                    prefix,
-                    key: PublicKey::Bls(key),
-                    elders: elders.into_iter().map(|e| XorName(e.0)).collect(),
-                    sibling_key: sibling_pk,
-                }));
-
-                Ok(duties)
+                Ok(NetworkDuties::from(duty))
             }
             RoutingEvent::Relocated { .. } => {
                 // Check our current status

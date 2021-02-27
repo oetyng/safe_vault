@@ -2376,7 +2376,7 @@ dependencies = [
 [[package]]
 name = "sn_routing"
 version = "0.46.0"
-source = "git+https://github.com/oetyng/sn_routing?branch=split-section-funds#01e1872529a5456ed01c45295f5f2b33b385debc"
+source = "git+https://github.com/oetyng/sn_routing?branch=split-section-funds#509312e555cb2e24b6958d5d2d35c3aa5d4f1ee0"
 dependencies = [
  "bincode",
  "bls_dkg",

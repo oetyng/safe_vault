@@ -660,7 +660,6 @@ impl Transfers {
                 debug!(">>> in match ok");
                 let mut ops: NetworkDuties = vec![];
                 // notify sending section
-                let location = event.transfer_proof.sender().into();
                 ops.push(
                     NodeMessagingDuty::Send(OutgoingMsg {
                         msg: Message::NodeEvent {
@@ -672,7 +671,7 @@ impl Transfers {
                             correlation_id: msg_id,
                             target_section_pk: None,
                         },
-                        dst: DstLocation::Section(location),
+                        dst: origin.to_dst(),
                         aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
                     })
                     .into(),

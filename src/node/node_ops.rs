@@ -15,7 +15,7 @@ use sn_data_types::{
     WalletInfo,
 };
 use sn_messaging::{client::Message, Aggregation, DstLocation, EndUser, MessageId, SrcLocation};
-use sn_routing::{Event as RoutingEvent, Prefix};
+use sn_routing::{ElderKnowledge, Event as RoutingEvent};
 use std::{
     collections::BTreeSet,
     fmt::{Debug, Formatter},
@@ -59,7 +59,7 @@ pub enum NodeDuty {
     /// On being promoted, an Infant node becomes an Adult.
     AssumeAdultDuties,
     /// On being promoted, an Adult node becomes an Elder.
-    AssumeElderDuties,
+    AssumeElderDuties(ElderKnowledge),
     /// Bootstrap of genesis section actor.
     ReceiveGenesisProposal {
         /// The genesis credit.
@@ -77,16 +77,7 @@ pub enum NodeDuty {
     /// Elder changes means the section public key
     /// changes as well, which leads to necessary updates
     /// of various places using the multisig of the section.
-    InitiateElderChange {
-        /// The prefix of our section.
-        prefix: Prefix,
-        /// The BLS public key of our section.
-        key: PublicKey,
-        /// The set of elders of our section.
-        elders: BTreeSet<XorName>,
-        /// Sibling section PK if a split is underway
-        sibling_key: Option<PublicKey>,
-    },
+    InitiateElderChange(ElderKnowledge),
     /// Finishes the multi-step process
     /// of transitioning to a new elder constellation.
     FinishElderChange {
@@ -131,7 +122,7 @@ impl Debug for NodeDuty {
             Self::ReceiveGenesisProposal { .. } => write!(f, "ReceiveGenesisProposal"),
             Self::ReceiveGenesisAccumulation { .. } => write!(f, "ReceiveGenesisAccumulation"),
             Self::AssumeAdultDuties => write!(f, "AssumeAdultDuties"),
-            Self::AssumeElderDuties => write!(f, "AssumeElderDuties"),
+            Self::AssumeElderDuties(_) => write!(f, "AssumeElderDuties"),
             Self::InitSectionWallet { .. } => write!(f, "InitSectionWallet"),
             Self::ProcessMessaging(duty) => write!(f, "ProcessMessaging({:?})", duty),
             Self::ProcessNetworkEvent(event) => write!(f, "ProcessNetworkEvent({:?}", event),

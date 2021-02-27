@@ -108,15 +108,9 @@ impl Rewards {
 
     /// After Elder change, we transition to a new
     /// transfer actor, as there is now a new keypair for it.
-    pub async fn init_transition(
-        &mut self,
-        elder_state: ElderState,
-        sibling_key: Option<PublicKey>,
-    ) -> Result<NetworkDuties> {
+    pub async fn init_transition(&mut self, elder_state: ElderState) -> Result<NetworkDuties> {
         Ok(NetworkDuties::from(
-            self.section_funds
-                .init_transition(elder_state, sibling_key)
-                .await?,
+            self.section_funds.init_transition(elder_state).await?,
         ))
     }
 
@@ -203,7 +197,7 @@ impl Rewards {
     }
 
     /// On section splits, we are paying out to Elders.
-    pub async fn payout_rewards(&mut self, node_ids: BTreeSet<&XorName>) -> Result<NetworkDuties> {
+    pub async fn payout_rewards(&mut self, node_ids: &BTreeSet<XorName>) -> Result<NetworkDuties> {
         let mut payouts: NetworkDuties = vec![];
         for node_id in node_ids {
             // Try get the wallet..

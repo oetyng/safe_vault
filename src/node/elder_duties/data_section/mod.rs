@@ -20,7 +20,7 @@ use crate::{
     ElderState, Result,
 };
 use log::info;
-use sn_data_types::{OwnerType, PublicKey, Result as DtResult, Signing, WalletInfo};
+use sn_data_types::{OwnerType, Result as DtResult, Signing, WalletInfo};
 use sn_messaging::{MessageId, SrcLocation};
 use sn_routing::Prefix;
 use sn_transfers::TransferActor;
@@ -148,7 +148,6 @@ impl DataSection {
     pub async fn initiate_elder_change(
         &mut self,
         elder_state: ElderState,
-        sibling_key: Option<PublicKey>,
     ) -> Result<NetworkDuties> {
         info!(">> Processing Elder change in data section");
         // TODO: Query sn_routing for info for [new_section_key]
@@ -158,7 +157,7 @@ impl DataSection {
         // make sure demoted is handled properly first, so that
         // EldersChanged doesn't lead to calling this method..
 
-        self.rewards.init_transition(elder_state, sibling_key).await
+        self.rewards.init_transition(elder_state).await
     }
 
     /// At section split, all Elders get their reward payout.
