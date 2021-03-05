@@ -2271,13 +2271,12 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "sn_data_types"
-version = "0.15.0"
+version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07a2bc7416afcca09b04b434eace1f29ac5cbf30c00b66696398da7d2e53f927"
+checksum = "dd7a48501ca366db81e4e11a0f42255a095a9ff3c2461d4dd484d25b82978e5b"
 dependencies = [
  "bincode",
  "crdts",
- "ed25519",
  "ed25519-dalek",
  "hex_fmt",
  "multibase",
@@ -2406,9 +2405,9 @@ dependencies = [
 
 [[package]]
 name = "sn_transfers"
-version = "0.4.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2c6410c7870b371fc5ae407113c8ecd870bbdd6252bb84b26af9c2ed8ef5ddb"
+checksum = "920f9f65f2c395e60b37cd61c187450c46bb462acf0d31303bea46149420b300"
 dependencies = [
  "bincode",
  "crdts",
