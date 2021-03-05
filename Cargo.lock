@@ -1708,8 +1708,9 @@ dependencies = [
 
 [[package]]
 name = "qp2p"
-version = "0.9.24"
-source = "git+https://github.com/bochaco/qp2p.git?branch=upgrade-tokio#8d4dc3e2b3d8c9937ed99b6392040386630bdbab"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "844273c97032bf05fa2158d5420cc4823f20157af6982b913c27b44dc612d7db"
 dependencies = [
  "base64 0.12.3",
  "bincode",
@@ -2316,9 +2317,9 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "sn_data_types"
-version = "0.15.3"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd7a48501ca366db81e4e11a0f42255a095a9ff3c2461d4dd484d25b82978e5b"
+checksum = "474a9777c2d8f79ceaf4a4c3224269132a14e74ed3404e726a4bf23b2ed13f68"
 dependencies = [
  "bincode",
  "crdts",
@@ -2350,35 +2351,9 @@ dependencies = [
 
 [[package]]
 name = "sn_messaging"
-version = "6.0.1"
+version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "639ec9bf6175a0a68a559a6e8f3ff8b4d4b155a4df124051c3fafb18b5a1bdde"
-dependencies = [
- "bincode",
- "bytes 1.0.1",
- "cookie-factory",
- "crdts",
- "ed25519-dalek",
- "hex_fmt",
- "multibase",
- "rand 0.7.3",
- "rand_core 0.5.1",
- "rmp-serde",
- "serde",
- "serde_bytes",
- "signature",
- "sn_data_types",
- "thiserror",
- "threshold_crypto",
- "tiny-keccak 2.0.2",
- "xor_name",
-]
-
-[[package]]
-name = "sn_messaging"
-version = "7.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6bb5907bbfbbe96961cb42a7683492b032e980a35b585c95f180a283a8c9ad8"
+checksum = "2119f03b71982b5165f24b7cb28af8fd39e12f7c1d779891a9b9c9d608130433"
 dependencies = [
  "bincode",
  "bytes 1.0.1",
@@ -2402,11 +2377,7 @@ dependencies = [
 
 [[package]]
 name = "sn_node"
-<<<<<<< HEAD
-version = "0.28.1"
-=======
-version = "0.28.0"
->>>>>>> chore(tokio): upgrade tokio to v1.2.0
+version = "0.28.2"
 dependencies = [
  "anyhow",
  "async-log",
@@ -2438,7 +2409,7 @@ dependencies = [
  "signature",
  "sn_data_types",
  "sn_launch_tool",
- "sn_messaging 6.0.1",
+ "sn_messaging",
  "sn_routing",
  "sn_transfers",
  "structopt",
@@ -2451,8 +2422,9 @@ dependencies = [
 
 [[package]]
 name = "sn_routing"
-version = "0.47.2"
-source = "git+https://github.com/bochaco/sn_routing.git?branch=upgrade-tokio#305ea7ce84534eef9a399f5a25765c84a26043db"
+version = "0.49.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00172c56a9614a79e1670cc99170a3ffb8dfd9a209ae6c21ba159441419e03c3"
 dependencies = [
  "bincode",
  "bls_dkg",
@@ -2469,7 +2441,7 @@ dependencies = [
  "resource_proof",
  "serde",
  "sn_data_types",
- "sn_messaging 7.0.0",
+ "sn_messaging",
  "thiserror",
  "threshold_crypto",
  "tiny-keccak 2.0.2",
@@ -2480,9 +2452,9 @@ dependencies = [
 
 [[package]]
 name = "sn_transfers"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77e38e3fe7051af3d6cd8515ae0ad8f841bd49a83ca784a62a51f7731576d951"
+checksum = "c3a21fadc04cc66d65c98d6f4e138f991ada27d4225c63041cf5351089969875"
 dependencies = [
  "bincode",
  "crdts",
