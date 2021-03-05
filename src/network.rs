@@ -119,10 +119,14 @@ impl Network {
 
     pub async fn send_message(
         &mut self,
-        itry: Itinerary,
+        itinerary: Itinerary,
         content: Bytes,
     ) -> Result<(), RoutingError> {
-        self.routing.lock().await.send_message(itry, content).await
+        self.routing
+            .lock()
+            .await
+            .send_message(itinerary, content)
+            .await
     }
 
     pub async fn set_joins_allowed(&mut self, joins_allowed: bool) -> Result<()> {
