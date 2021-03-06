@@ -79,14 +79,6 @@ impl ReceivedMsgAnalysis {
                     Ok(res)
                 }
             }
-            DstLocation::AccumulatingNode(_name) => {
-                let res = self.match_node_msg(msg.clone(), src)?;
-                if res.is_empty() {
-                    self.match_section_msg(msg, src)
-                } else {
-                    Ok(res)
-                }
-            }
             _ => Err(Error::InvalidMessage(
                 msg_id,
                 format!("Invalid dst: {:?}", msg),
@@ -194,7 +186,7 @@ impl ReceivedMsgAnalysis {
                 ..
             } => {
                 info!("Verifying GetChunk query!");
-                let _proof_chain = self.adult_state()?.section_proof_chain();
+                let _proof_chain = self.adult_state()?.section_chain();
 
                 // Recreate original MessageId from Section
                 let msg_id = MessageId::combine(vec![*address.name(), *new_holder]);
