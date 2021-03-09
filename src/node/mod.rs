@@ -14,6 +14,7 @@ pub mod state_db;
 use serde::Serialize;
 mod genesis;
 mod messaging;
+use hex_fmt::HexFmt;
 
 use crate::{
     chunk_store::UsedSpace,
@@ -29,7 +30,7 @@ use crate::{
     Config, Error, Network, NodeInfo, Result,
 };
 use bls::SecretKey;
-use log::{error, debug, info};
+use log::{error, debug, info, trace};
 use sn_data_types::{
     ActorHistory, Credit, NodeRewardStage, PublicKey,ReplicaPublicKeySet,Signature, SignatureShare, SignedCredit, Token,
     TransferPropagated, WalletInfo,
@@ -232,9 +233,8 @@ impl Node {
     ) -> Result<()> {
         let network_api = &self.network_api;
 
-        debug!("PROCESSING AN EVENT!");
         // use ElderDuty::*;
-        //trace!("Processing Routing Event: {:?}", event);
+        trace!("Processing Routing Event: {:?}", event);
         match event {
             RoutingEvent::Genesis => {
                    
@@ -318,7 +318,7 @@ impl Node {
                 // Ok(NetworkDuties::from(NodeDuty::BeginFormingGenesisSection))
             },
             RoutingEvent::MemberLeft { name, age } => {
-                // trace!("A node has left the section. Node: {:?}", name);
+                trace!("A node has left the section. Node: {:?}", name);
                 // //self.log_node_counts().await;
                 // Ok(NetworkDuties::from(ProcessLostMember {
                 //     name: XorName(name.0),
@@ -332,13 +332,13 @@ impl Node {
                 age,
                 ..
             } => {
-                Ok(())
                 // if Self::is_forming_genesis(network_api).await {
                 //     // during formation of genesis we do not process this event
                 //     return Ok(vec![]);
                 // }
 
-                // //info!("New member has joined the section");
+                info!("New member has joined the section");
+                Ok(())
                 // //self.log_node_counts().await;
                 // if let Some(prev_name) = previous_name {
                 //     trace!("The new member is a Relocated Node");
@@ -367,12 +367,12 @@ impl Node {
                 // )
             }
             RoutingEvent::MessageReceived { content, src, dst } => {
-                // info!(
-                //     "Received network message: {:8?}\n Sent from {:?} to {:?}",
-                //     HexFmt(&content),
-                //     src,
-                //     dst
-                // );
+                info!(
+                    "Received network message: {:8?}\n Sent from {:?} to {:?}",
+                    HexFmt(&content),
+                    src,
+                    dst
+                );
                 // self.analysis.evaluate(Message::from(content)?, src, dst)
 
                 Ok(())
@@ -384,6 +384,7 @@ impl Node {
                 self_status_change,
                 sibling_key,
             } => {
+                trace!("Elders changed event!");
                 // let mut duties: NetworkDuties = match self_status_change {
                 //     NodeElderChange::None => vec![],
                 //     NodeElderChange::Promoted => {

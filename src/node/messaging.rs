@@ -31,16 +31,22 @@ impl Messaging {
     pub async fn process_messaging_duty(
         &mut self,
         duty: NodeMessagingDuty,
-    ) -> Result<NetworkDuties> {
+    ) -> Result<()> {
         use NodeMessagingDuty::*;
         match duty {
-            Send(msg) => self.send(msg).await,
-            SendToAdults { targets, msg } => self.send_to_nodes(targets, &msg).await,
-            NoOp => Ok(vec![]),
+            Send(msg) => {
+                self.send(msg).await?;
+                Ok(())
+            },
+            SendToAdults { targets, msg } => {
+                self.send_to_nodes(targets, &msg).await?;
+                Ok(())
+            },
+            NoOp => Ok(()),
         }
     }
 
-    async fn send(&mut self, msg: OutgoingMsg) -> Result<NetworkDuties> {
+    async fn send(&mut self, msg: OutgoingMsg) -> Result<()> {
         let src = if msg.section_source {
             SrcLocation::Section(self.network.our_prefix().await.name())
         } else {
@@ -58,7 +64,7 @@ impl Messaging {
                 error!("Unable to send msg: {:?}", err);
                 Err(Error::Logic(format!("Unable to send msg: {:?}", msg.id())))
             },
-            |()| Ok(vec![]),
+            |()| Ok(()),
         )
     }
 
@@ -66,7 +72,7 @@ impl Messaging {
         &mut self,
         targets: BTreeSet<XorName>,
         msg: &Message,
-    ) -> Result<NetworkDuties> {
+    ) -> Result<()> {
         let name = self.network.our_name().await;
         let bytes = &msg.serialize()?;
         for target in targets {
@@ -87,6 +93,6 @@ impl Messaging {
                     |()| {},
                 );
         }
-        Ok(vec![])
+        Ok(())
     }
 }
