@@ -7,7 +7,7 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 mod elder_constellation;
-mod genesis;
+pub mod genesis;
 pub mod messaging;
 mod msg_analysis;
 mod network_events;
@@ -60,13 +60,13 @@ enum Stage {
     Elder(ElderConstellation),
 }
 
-#[allow(clippy::large_enum_variant)]
-pub enum GenesisStage {
-    None,
-    AwaitingGenesisThreshold,
-    ProposingGenesis(GenesisProposal),
-    AccumulatingGenesis(GenesisAccumulation),
-}
+// #[allow(clippy::large_enum_variant)]
+// pub enum GenesisStage {
+//     None,
+//     AwaitingGenesisThreshold,
+//     ProposingGenesis(GenesisProposal),
+//     AccumulatingGenesis(GenesisAccumulation),
+// }
 
 /// Node duties are those that all nodes
 /// carry out. (TBD: adjust for Infant level, which might be doing nothing now).

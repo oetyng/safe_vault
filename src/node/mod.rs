@@ -6,18 +6,22 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-mod adult_duties;
-mod elder_duties;
-mod node_duties;
+// mod adult_duties;
+// mod elder_duties;
+// mod node_duties;
 mod node_ops;
 pub mod state_db;
 use serde::Serialize;
+mod genesis;
+mod messaging;
 
 use crate::{
     chunk_store::UsedSpace,
     node::{
-        node_duties::{NodeDuties, GenesisStage, messaging::Messaging},
-        node_ops::{NetworkDuties, NodeDuty},
+        genesis::GenesisStage, genesis::GenesisProposal, messaging::Messaging,
+        // node_duties::{NodeDuties, GenesisStage, genesis::GenesisProposal, messaging::Messaging},
+        node_ops::{NetworkDuties, NodeDuty, NodeMessagingDuty, OutgoingMsg},
+        // TODO: strip out NodeMessagingDuty and just pass in msg
         state_db::{get_age_group, store_age_group, store_new_reward_keypair, AgeGroup},
 
     },
@@ -43,7 +47,7 @@ use ed25519_dalek::PublicKey as Ed25519PublicKey;
 // use log::debug;
 // use serde::Serialize;
 // use sn_data_types::{PublicKey, Signature, SignatureShare};
-// use sn_messaging::client::TransientElderKey;
+use sn_messaging::{client::TransientElderKey, DstLocation, client::{Message, MsgSender, NodeCmd, NodeSystemCmd}, MessageId, Aggregation};
 use sn_routing::SectionChain;
 // use std::{
 //     collections::BTreeSet,
@@ -266,38 +270,48 @@ impl Node {
                         let credit_sig_share = self.sign_as_elder(&credit).await?;
                         let _ = signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
             
-                        // self.stage = Stage::Genesis(ProposingGenesis(GenesisProposal {
-                        //     elder_state: elder_state.clone(),
-                        //     proposal: credit.clone(),
-                        //     signatures,
-                        //     pending_agreement: None,
-                        // }));
+                        self.genesis_stage = GenesisStage::ProposingGenesis(GenesisProposal {
+                            proposal: credit.clone(),
+                            signatures,
+                            pending_agreement: None,
+                        });
             
                         let dst = DstLocation::Section(credit.recipient.into());
-                        return Ok(NetworkDuties::from(NodeMessagingDuty::Send(OutgoingMsg {
-                            msg: Message::NodeCmd {
-                                cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
-                                    credit,
-                                    sig: credit_sig_share,
-                                }),
-                                id: MessageId::new(),
-                                target_section_pk: None,
-                            },
-                            dst,
-                            section_source: false, // sent as single node
-                            aggregation: Aggregation::None,
-                        })));
+
+
+                        self.messaging.process_messaging_duty(
+                            NodeMessagingDuty::Send(OutgoingMsg {
+                                msg: Message::NodeCmd {
+                                    cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
+                                        credit,
+                                        sig: credit_sig_share,
+                                    }),
+                                    id: MessageId::new(),
+                                    target_section_pk: None,
+                                },
+                                dst,
+                                section_source: false, // sent as single node
+                                aggregation: Aggregation::None,
+                            })
+                            
+                        ).await?;
+
+                        
+                        // return Ok(NetworkDuties::from());
                     } else if is_genesis_section
                         && elder_count < GENESIS_ELDER_COUNT
                         && section_chain_len <= GENESIS_ELDER_COUNT
                     {
                         debug!("AwaitingGenesisThreshold!");
-                        self.stage = Stage::Genesis(AwaitingGenesisThreshold);
-                        return Ok(vec![]);
-                    } else {
-                        Err(Error::InvalidOperation(
-                            "Only for genesis formation".to_string(),
-                        ))
+                        self.genesis_stage = GenesisStage::AwaitingGenesisThreshold;
+                        // return Ok(vec![]);
+                    } 
+                    else {
+
+                        debug!("HITTING GENESIS ELSE FOR SOME REASON....");
+                        // Err(Error::InvalidOperation(
+                        //     "Only for genesis formation".to_string(),
+                        // ))
                     }
                 
                 Ok(())
