@@ -80,8 +80,8 @@ pub struct Node {
     prefix: Option<Prefix>,
     node_name: XorName,
     node_id: Ed25519PublicKey,
-    key_index: usize,
-    public_key_set: ReplicaPublicKeySet,
+    // key_index: usize,
+    // public_key_set: ReplicaPublicKeySet,
     sibling_public_key: Option<PublicKey>,
     section_chain: SectionChain,
     elders: Vec<(XorName, SocketAddr)>,
@@ -100,6 +100,7 @@ impl Node {
         let root_dir = root_dir_buf.as_path();
         std::fs::create_dir_all(root_dir)?;
 
+        debug!("NEW NODE");
         let reward_key_task = async move {
             let res: Result<PublicKey>;
             match config.wallet_id() {
@@ -128,6 +129,7 @@ impl Node {
         // };
         
         let reward_key = reward_key_task?;
+        debug!("NEW NODE after reward key");
         // let (reward_key, _age_group) = tokio::try_join!(reward_key_task, age_group_task)?;
         let (network_api, network_events) = Network::new(config).await?;
 
@@ -152,6 +154,7 @@ impl Node {
 
         let messaging = Messaging::new(network_api.clone());
 
+        debug!("NEW NODE after messaging");
 
         // TODO:  HERE SETUP ADULT/ELDEEER
         // let init_ops = match age_group {
@@ -160,13 +163,22 @@ impl Node {
         //     Elder => Err(Error::Logic("Unimplemented".to_string())),
         // };
 
+        // let index = match network_api.our_index().await {
+        //     Ok(index) => Ok(index),
+        //     Err(error) => {
+        //         error!("AAH INDEX: {:?}",error);
+
+        //         Err(error)
+        //     }
+        // }?;
+        
         let node = Self {
             // duties: NodeDuties::new(node_info, network_api.clone()).await?,
             prefix: Some(network_api.our_prefix().await),
             node_name: network_api.our_name().await,
             node_id: network_api.public_key().await,
-            key_index: network_api.our_index().await?,
-            public_key_set: network_api.public_key_set().await?,
+            // key_index: index,
+            // public_key_set: network_api.public_key_set().await?,
             sibling_public_key: network_api.sibling_public_key().await,
             section_chain: network_api.section_chain().await,
             elders: network_api.our_elder_addresses().await,
@@ -332,10 +344,11 @@ impl Node {
                 age,
                 ..
             } => {
-                // if Self::is_forming_genesis(network_api).await {
-                //     // during formation of genesis we do not process this event
-                //     return Ok(vec![]);
-                // }
+                if self.is_forming_genesis().await {
+                    // during formation of genesis we do not process this event
+                    debug!("Forming genesis so ignore new member");
+                    return Ok(())
+                }
 
                 info!("New member has joined the section");
                 Ok(())
@@ -488,8 +501,18 @@ impl Node {
                 .public_key()).await?;
         Ok(SignatureShare {
             share,
-            index: self.key_index,
+            index: self.network_api.our_index().await?,
         })
+    }
+
+    /// Are we forming the genesis?
+    async fn is_forming_genesis(&self) -> bool {
+        let is_genesis_section = self.network_api.our_prefix().await.is_empty();
+        let elder_count = self.network_api.our_elder_names().await.len();
+        let section_chain_len = self.network_api.section_chain().await.len();
+        is_genesis_section
+            && elder_count <= GENESIS_ELDER_COUNT
+            && section_chain_len <= GENESIS_ELDER_COUNT
     }
 }
 
