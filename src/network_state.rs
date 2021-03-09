@@ -282,7 +282,7 @@ impl ElderState {
 }
 
 #[derive(Clone)]
-struct AdultReader {
+pub struct AdultReader {
     network: Network,
 }
 
