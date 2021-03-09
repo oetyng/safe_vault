@@ -35,7 +35,7 @@ use sn_data_types::{
     ActorHistory, Credit, NodeRewardStage, PublicKey,ReplicaPublicKeySet,Signature, SignatureShare, SignedCredit, Token,
     TransferPropagated, WalletInfo,
 };
-use sn_routing::{EventStream, MIN_AGE, Event as RoutingEvent};
+use sn_routing::{EventStream, MIN_AGE, Event as RoutingEvent, NodeElderChange};
 use std::{
     fmt::{self, Display, Formatter},
     net::SocketAddr,
@@ -236,7 +236,85 @@ impl Node {
 
     //     // Ok()
     // }
+    
+    async fn setup_genesis(&mut self) -> Result<()> {
+        // if !self.node_info.genesis {
+        //     return Err(Error::InvalidOperation(
+        //         "only genesis node can transition to Elder as Infant".to_string(),
+        //     ));
+        // }
 
+        let is_genesis_section = self.network_api.our_prefix().await.is_empty();
+        let elder_count = self.network_api.our_elder_names().await.len();
+        let section_chain_len = self.network_api.section_chain().await.len();
+        debug!(
+            "begin_transition_to_elder. is_genesis_section: {}, elder_count: {}, section_chain_len: {}",
+            is_genesis_section, elder_count, section_chain_len
+        );
+        if is_genesis_section
+            && elder_count == GENESIS_ELDER_COUNT
+            && section_chain_len <= GENESIS_ELDER_COUNT
+        {
+            // this is the case when we are the GENESIS_ELDER_COUNT-th Elder!
+            debug!("**********threshold reached; proposing genesis!");
+
+            // let elder_state = ElderState::new(self.network_api.clone()).await?;
+            let genesis_balance = u32::MAX as u64 * 1_000_000_000;
+            let credit = Credit {
+                id: Default::default(),
+                amount: Token::from_nano(genesis_balance),
+                recipient: self.network_api.section_public_key().await.ok_or(Error::NoSectionPublicKey)?,
+                msg: "genesis".to_string(),
+            };
+            let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
+            let credit_sig_share = self.sign_as_elder(&credit).await?;
+            let _ = signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
+
+            self.genesis_stage = GenesisStage::ProposingGenesis(GenesisProposal {
+                proposal: credit.clone(),
+                signatures,
+                pending_agreement: None,
+            });
+
+            let dst = DstLocation::Section(credit.recipient.into());
+
+
+            self.messaging.process_messaging_duty(
+                NodeMessagingDuty::Send(OutgoingMsg {
+                    msg: Message::NodeCmd {
+                        cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
+                            credit,
+                            sig: credit_sig_share,
+                        }),
+                        id: MessageId::new(),
+                        target_section_pk: None,
+                    },
+                    dst,
+                    section_source: false, // sent as single node
+                    aggregation: Aggregation::None,
+                })
+                
+            ).await?;
+
+            
+            // return Ok(NetworkDuties::from());
+        } else if is_genesis_section
+            && elder_count < GENESIS_ELDER_COUNT
+            && section_chain_len <= GENESIS_ELDER_COUNT
+        {
+            debug!("AwaitingGenesisThreshold!");
+            self.genesis_stage = GenesisStage::AwaitingGenesisThreshold;
+            // return Ok(vec![]);
+        } 
+        else {
+
+            debug!("HITTING GENESIS ELSE FOR SOME REASON....");
+            // Err(Error::InvalidOperation(
+            //     "Only for genesis formation".to_string(),
+            // ))
+        }
+        Ok(())
+    }
     /// Process any routing event
     pub async fn process_network_event(
         &mut self,
@@ -249,84 +327,9 @@ impl Node {
         trace!("Processing Routing Event: {:?}", event);
         match event {
             RoutingEvent::Genesis => {
+                self.setup_genesis().await
                    
-                     if !self.node_info.genesis {
-                        return Err(Error::InvalidOperation(
-                            "only genesis node can transition to Elder as Infant".to_string(),
-                        ));
-                    }
-            
-                    let is_genesis_section = self.network_api.our_prefix().await.is_empty();
-                    let elder_count = self.network_api.our_elder_names().await.len();
-                    let section_chain_len = self.network_api.section_chain().await.len();
-                    // debug!(
-                    //     "begin_transition_to_elder. is_genesis_section: {}, elder_count: {}, section_chain_len: {}",
-                    //     is_genesis_section, elder_count, section_chain_len
-                    // );
-                    if is_genesis_section
-                        && elder_count == GENESIS_ELDER_COUNT
-                        && section_chain_len <= GENESIS_ELDER_COUNT
-                    {
-                        // this is the case when we are the GENESIS_ELDER_COUNT-th Elder!
-                        debug!("threshold reached; proposing genesis!");
-            
-                        // let elder_state = ElderState::new(self.network_api.clone()).await?;
-                        let genesis_balance = u32::MAX as u64 * 1_000_000_000;
-                        let credit = Credit {
-                            id: Default::default(),
-                            amount: Token::from_nano(genesis_balance),
-                            recipient: self.network_api.section_public_key().await.ok_or(Error::NoSectionPublicKey)?,
-                            msg: "genesis".to_string(),
-                        };
-                        let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
-                        let credit_sig_share = self.sign_as_elder(&credit).await?;
-                        let _ = signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
-            
-                        self.genesis_stage = GenesisStage::ProposingGenesis(GenesisProposal {
-                            proposal: credit.clone(),
-                            signatures,
-                            pending_agreement: None,
-                        });
-            
-                        let dst = DstLocation::Section(credit.recipient.into());
-
-
-                        self.messaging.process_messaging_duty(
-                            NodeMessagingDuty::Send(OutgoingMsg {
-                                msg: Message::NodeCmd {
-                                    cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
-                                        credit,
-                                        sig: credit_sig_share,
-                                    }),
-                                    id: MessageId::new(),
-                                    target_section_pk: None,
-                                },
-                                dst,
-                                section_source: false, // sent as single node
-                                aggregation: Aggregation::None,
-                            })
-                            
-                        ).await?;
-
-                        
-                        // return Ok(NetworkDuties::from());
-                    } else if is_genesis_section
-                        && elder_count < GENESIS_ELDER_COUNT
-                        && section_chain_len <= GENESIS_ELDER_COUNT
-                    {
-                        debug!("AwaitingGenesisThreshold!");
-                        self.genesis_stage = GenesisStage::AwaitingGenesisThreshold;
-                        // return Ok(vec![]);
-                    } 
-                    else {
-
-                        debug!("HITTING GENESIS ELSE FOR SOME REASON....");
-                        // Err(Error::InvalidOperation(
-                        //     "Only for genesis formation".to_string(),
-                        // ))
-                    }
-                
-                Ok(())
+                // Ok(())
                 // Ok(NetworkDuties::from(NodeDuty::BeginFormingGenesisSection))
             },
             RoutingEvent::MemberLeft { name, age } => {
@@ -397,38 +400,53 @@ impl Node {
                 self_status_change,
                 sibling_key,
             } => {
-                trace!("Elders changed event!");
-                // let mut duties: NetworkDuties = match self_status_change {
-                //     NodeElderChange::None => vec![],
-                //     NodeElderChange::Promoted => {
-                //         return if Self::is_forming_genesis(network_api).await {
-                //             Ok(NetworkDuties::from(NodeDuty::BeginFormingGenesisSection))
-                //         } else {
-                //             // After genesis section formation, any new Elder will be informed
-                //             // by its peers of data required. 
-                //             // It may also request this if missing.
-                //             // For now we start with defaults
-                            
-                //             Ok(NetworkDuties::from(NodeDuty::CompleteTransitionToElder{
-                //                 node_rewards: Default::default(),
-                //                 section_wallet: WalletInfo { 
-                //                     replicas:  network_api.public_key_set().await?,
-                //                     history: ActorHistory{
-                //                         credits: vec![],
-                //                         debits: vec![]
-                //                     }
-                //                 },
-                //                 user_wallets: Default::default()
-                //             }))
-                //         };
-                //     }
-                //     NodeElderChange::Demoted => NetworkDuties::from(NodeDuty::AssumeAdultDuties),
-                // };
+                trace!("******Elders changed event!");
+                // let mut duties: NetworkDuties = 
+                match self_status_change {
+                    NodeElderChange::None => {
+                        // do nothing
+                        Ok(())
+                    },
+                    NodeElderChange::Promoted => {
+                        if self.is_forming_genesis().await {
+                            // Ok(NetworkDuties::from(NodeDuty::BeginFormingGenesisSection))
+                            self.setup_genesis().await
+                            // Ok(())
+                        } else {
+                            // After genesis section formation, any new Elder will be informed
+                            // by its peers of data required. 
+                            // It may also request this if missing.
+                            // For now we start with defaults
+                            debug!("TODO: FINISH ELDER MAKING");
 
-                // let mut sibling_pk = None;
-                // if let Some(pk) = sibling_key {
-                //     sibling_pk = Some(PublicKey::Bls(pk));
-                // }
+                            // Ok(NetworkDuties::from(NodeDuty::CompleteTransitionToElder{
+                                //     node_rewards: Default::default(),
+                                //     section_wallet: WalletInfo { 
+                                    //         replicas:  network_api.public_key_set().await?,
+                                    //         history: ActorHistory{
+                                        //             credits: vec![],
+                                        //             debits: vec![]
+                                        //         }
+                                        //     },
+                                        //     user_wallets: Default::default()
+                                        // }))
+                                        Ok(())
+                        }
+                    }
+                    NodeElderChange::Demoted => {
+                        //TODO: Demotion
+                        // NetworkDuties::from(NodeDuty::AssumeAdultDuties)
+                        Ok(())
+                    },
+                }?;
+
+                let mut sibling_pk = None;
+                if let Some(pk) = sibling_key {
+                    sibling_pk = Some(PublicKey::Bls(pk));
+                }
+                // TODO: Update elder info.
+
+
 
                 // duties.push(NetworkDuty::from(NodeDuty::UpdateElderInfo {
                 //     prefix,
