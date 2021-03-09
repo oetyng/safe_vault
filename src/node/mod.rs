@@ -14,8 +14,11 @@ pub mod state_db;
 use serde::Serialize;
 mod genesis;
 mod messaging;
+mod handle_msg;
+
 use hex_fmt::HexFmt;
 
+use handle_msg::handle_msg;
 use crate::{
     chunk_store::UsedSpace,
     node::{
@@ -269,7 +272,7 @@ impl Node {
             let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
             let credit_sig_share = self.sign_as_elder(&credit).await?;
             let _ = signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
-
+            
             self.genesis_stage = GenesisStage::ProposingGenesis(GenesisProposal {
                 proposal: credit.clone(),
                 signatures,
@@ -389,6 +392,7 @@ impl Node {
                     src,
                     dst
                 );
+                handle_msg(Message::from(content)?, src ,dst)?;
                 // self.analysis.evaluate(Message::from(content)?, src, dst)
 
                 Ok(())
