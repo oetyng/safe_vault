@@ -61,7 +61,8 @@ enum Stage {
 }
 
 #[allow(clippy::large_enum_variant)]
-enum GenesisStage {
+pub enum GenesisStage {
+    None,
     AwaitingGenesisThreshold,
     ProposingGenesis(GenesisProposal),
     AccumulatingGenesis(GenesisAccumulation),

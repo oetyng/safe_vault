@@ -11,11 +11,12 @@ mod elder_duties;
 mod node_duties;
 mod node_ops;
 pub mod state_db;
+use serde::Serialize;
 
 use crate::{
     chunk_store::UsedSpace,
     node::{
-        node_duties::{NodeDuties, messaging::Messaging},
+        node_duties::{NodeDuties, GenesisStage, messaging::Messaging},
         node_ops::{NetworkDuties, NodeDuty},
         state_db::{get_age_group, store_age_group, store_new_reward_keypair, AgeGroup},
 
@@ -24,14 +25,17 @@ use crate::{
     Config, Error, Network, NodeInfo, Result,
 };
 use bls::SecretKey;
-use log::{error, info};
-use sn_data_types::{PublicKey, ReplicaPublicKeySet, Signature, SignatureShare};
+use log::{error, debug, info};
+use sn_data_types::{
+    ActorHistory, Credit, NodeRewardStage, PublicKey,ReplicaPublicKeySet,Signature, SignatureShare, SignedCredit, Token,
+    TransferPropagated, WalletInfo,
+};
 use sn_routing::{EventStream, MIN_AGE, Event as RoutingEvent};
 use std::{
     fmt::{self, Display, Formatter},
     net::SocketAddr,
 };
-
+use std::collections::BTreeMap;
 
 // use bls::{PublicKeySet};
 use ed25519_dalek::PublicKey as Ed25519PublicKey;
@@ -46,7 +50,8 @@ use sn_routing::SectionChain;
 //     // net::SocketAddr,
 //     path::{Path, PathBuf},
 // };
-use xor_name::{Prefix, XorName};
+
+use sn_routing::{XorName, Prefix, ELDER_SIZE as GENESIS_ELDER_COUNT};
 
 
 /// Main node struct.
@@ -55,7 +60,7 @@ pub struct Node {
     messaging: Messaging,
     network_api: Network,
     network_events: EventStream,
-
+    node_info: NodeInfo,
 
     // old adult
     // prefix: Prefix,
@@ -78,6 +83,8 @@ pub struct Node {
     adult_reader: AdultReader,
     interaction: NodeInteraction,
     node_signing: NodeSigning,
+
+    genesis_stage: GenesisStage
 }
 
 impl Node {
@@ -162,11 +169,13 @@ impl Node {
             interaction: NodeInteraction::new(network_api.clone()),
             node_signing: NodeSigning::new(network_api.clone()),
 
+            node_info,
 
             network_api,
             network_events,
             messaging,
 
+            genesis_stage: GenesisStage::None
         };
 
         // node.process_while_any().await;
@@ -192,7 +201,7 @@ impl Node {
         //info!("Listening for routing events at: {}", info);
         while let Some(event) = self.network_events.next().await {
             //info!("New event received from the Network: {:?}", event);
-            self.process_network_event(event);
+            self.process_network_event(event).await?;
 
             // self.process_while_any(Ok(NetworkDuties::from(NodeDuty::ProcessNetworkEvent(
             //     event,
@@ -211,16 +220,86 @@ impl Node {
     //     // Ok()
     // }
 
+    /// Process any routing event
     pub async fn process_network_event(
         &mut self,
         event: RoutingEvent,
         // network_api: &Network,
     ) -> Result<()> {
         let network_api = &self.network_api;
+
+        debug!("PROCESSING AN EVENT!");
         // use ElderDuty::*;
         //trace!("Processing Routing Event: {:?}", event);
         match event {
             RoutingEvent::Genesis => {
+                   
+                     if !self.node_info.genesis {
+                        return Err(Error::InvalidOperation(
+                            "only genesis node can transition to Elder as Infant".to_string(),
+                        ));
+                    }
+            
+                    let is_genesis_section = self.network_api.our_prefix().await.is_empty();
+                    let elder_count = self.network_api.our_elder_names().await.len();
+                    let section_chain_len = self.network_api.section_chain().await.len();
+                    // debug!(
+                    //     "begin_transition_to_elder. is_genesis_section: {}, elder_count: {}, section_chain_len: {}",
+                    //     is_genesis_section, elder_count, section_chain_len
+                    // );
+                    if is_genesis_section
+                        && elder_count == GENESIS_ELDER_COUNT
+                        && section_chain_len <= GENESIS_ELDER_COUNT
+                    {
+                        // this is the case when we are the GENESIS_ELDER_COUNT-th Elder!
+                        debug!("threshold reached; proposing genesis!");
+            
+                        // let elder_state = ElderState::new(self.network_api.clone()).await?;
+                        let genesis_balance = u32::MAX as u64 * 1_000_000_000;
+                        let credit = Credit {
+                            id: Default::default(),
+                            amount: Token::from_nano(genesis_balance),
+                            recipient: self.network_api.section_public_key().await.ok_or(Error::NoSectionPublicKey)?,
+                            msg: "genesis".to_string(),
+                        };
+                        let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
+                        let credit_sig_share = self.sign_as_elder(&credit).await?;
+                        let _ = signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
+            
+                        // self.stage = Stage::Genesis(ProposingGenesis(GenesisProposal {
+                        //     elder_state: elder_state.clone(),
+                        //     proposal: credit.clone(),
+                        //     signatures,
+                        //     pending_agreement: None,
+                        // }));
+            
+                        let dst = DstLocation::Section(credit.recipient.into());
+                        return Ok(NetworkDuties::from(NodeMessagingDuty::Send(OutgoingMsg {
+                            msg: Message::NodeCmd {
+                                cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
+                                    credit,
+                                    sig: credit_sig_share,
+                                }),
+                                id: MessageId::new(),
+                                target_section_pk: None,
+                            },
+                            dst,
+                            section_source: false, // sent as single node
+                            aggregation: Aggregation::None,
+                        })));
+                    } else if is_genesis_section
+                        && elder_count < GENESIS_ELDER_COUNT
+                        && section_chain_len <= GENESIS_ELDER_COUNT
+                    {
+                        debug!("AwaitingGenesisThreshold!");
+                        self.stage = Stage::Genesis(AwaitingGenesisThreshold);
+                        return Ok(vec![]);
+                    } else {
+                        Err(Error::InvalidOperation(
+                            "Only for genesis formation".to_string(),
+                        ))
+                    }
+                
                 Ok(())
                 // Ok(NetworkDuties::from(NodeDuty::BeginFormingGenesisSection))
             },
@@ -378,13 +457,28 @@ impl Node {
 
     fn handle_error(&self, err: &Error) {
         use std::error::Error;
-        info!("unimplemented: Handle errors.. {}", err);
+        info!("unimplemented: Handle errors. This should be return w/ lazyError to sender. {}", err);
 
         if let Some(source) = err.source() {
             error!("Source of error: {:?}", source);
         }
     }
+
+    /// TODO rename to SignWithAuthority?
+    pub async fn sign_as_elder<T: Serialize>(&self, data: &T) -> Result<SignatureShare> {
+        let share = self
+            .node_signing
+            .sign_as_elder(data, 
+                &self.network_api.public_key_set().await?
+                .public_key()).await?;
+        Ok(SignatureShare {
+            share,
+            index: self.key_index,
+        })
+    }
 }
+
+
 
 impl Display for Node {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {

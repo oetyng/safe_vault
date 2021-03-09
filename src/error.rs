@@ -22,6 +22,9 @@ pub enum Error {
     /// Not enough space in `ChunkStore` to perform `put`.
     #[error("Not enough space")]
     NotEnoughSpace,
+    /// Not Section PublicKey.
+    #[error("Not section public key returned from routing")]
+    NoSectionPublicKey,
     /// Node not found for rewarding
     #[error("Node not found for rewards")]
     NodeNotFoundForReward,
