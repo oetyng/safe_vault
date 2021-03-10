@@ -607,6 +607,8 @@ impl Node {
                 let section_pk = PublicKey::Bls(section_pk_set.public_key());
                 bootstrap.add(sig, section_pk_set)?;
                 if let Some(signed_credit) = &bootstrap.pending_agreement {
+
+                    info!("******* there is a pending agreement");
                     // replicas signatures over > signed_credit <
                     let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
                     let credit_sig_share = self.sign_as_elder(&signed_credit).await?;
@@ -632,7 +634,7 @@ impl Node {
                         section_source: false, // sent as single node
                         dst: DstLocation::Section(XorName::from(section_pk)),
                         aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
-                    });
+                    }).await?;
 
                     stage
                 } else {

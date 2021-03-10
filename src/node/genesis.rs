@@ -49,6 +49,8 @@ impl GenesisProposal {
                     .map_err(|_| Error::CouldNotCombineSignatures)?,
             );
 
+            info!("We got a sig?");
+
             let signed_credit = SignedCredit {
                 credit: self.proposal.clone(),
                 actor_signature,
