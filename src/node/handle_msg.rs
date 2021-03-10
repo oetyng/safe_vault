@@ -7,6 +7,8 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{
+    node::work::receive_genesis_proposal,
+    Node,
     node::node_ops::{
         AdultDuty, ChunkReplicationCmd, ChunkReplicationDuty, ChunkReplicationQuery,
         ChunkStoreDuty, ElderDuty, MetadataDuty, NetworkDuties, NodeDuty, RewardCmd, RewardDuty,
@@ -41,11 +43,15 @@ use sn_routing::XorName;
 //     self.state.node_name()
 // }
 
-pub fn handle_msg(msg: Message, src: SrcLocation, dst: DstLocation) -> Result<()> {
+impl Node {
+
+
+
+pub async fn handle_msg(&self, msg: Message, src: SrcLocation, dst: DstLocation) -> Result<()> {
     debug!(">>>>>>>>>>>> Evaluating received msg. {:?}.", msg);
     let msg_id = msg.id();
     if let SrcLocation::EndUser(origin) = src {
-        match_user_sent_msg(msg.clone(), origin)?
+        self.match_user_sent_msg(msg.clone(), origin)?
         // if res.is_empty() {
         //     return Err(Error::InvalidMessage(
         //         msg_id,
@@ -60,7 +66,7 @@ pub fn handle_msg(msg: Message, src: SrcLocation, dst: DstLocation) -> Result<()
 
     match &dst {
         DstLocation::Section(_name) => {
-            match_section_msg(msg.clone(), src)
+            self.match_section_msg(msg.clone(), src).await
             // if res.is_empty() {
             //     match_node_msg(msg, src)
             // } else {
@@ -68,7 +74,7 @@ pub fn handle_msg(msg: Message, src: SrcLocation, dst: DstLocation) -> Result<()
             // }
         }
         DstLocation::Node(_name) => {
-            match_node_msg(msg.clone(), src)
+            self.match_node_msg(msg.clone(), src)
             // if res.is_empty() {
             //     match_section_msg(msg, src)
             // } else {
@@ -82,7 +88,7 @@ pub fn handle_msg(msg: Message, src: SrcLocation, dst: DstLocation) -> Result<()
     }
 }
 
-fn match_user_sent_msg(msg: Message, origin: EndUser) -> Result<()> {
+fn match_user_sent_msg(&self, msg: Message, origin: EndUser) -> Result<()> {
     match msg {
         // TODO: match and parse directly
         // Message::Query {
@@ -121,10 +127,22 @@ fn match_user_sent_msg(msg: Message, origin: EndUser) -> Result<()> {
     }
 }
 
-fn match_section_msg(msg: Message, origin: SrcLocation) -> Result<()> {
+async fn match_section_msg(&self, msg: Message, origin: SrcLocation) -> Result<()> {
     debug!("Evaluating section message: {:?}", msg);
 
     match &msg {
+        Message::NodeCmd {
+            cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis { credit, sig }),
+            ..
+        } => {
+            // TODO: Handle failure here;
+            self.receive_genesis_proposal( credit, sig).await?
+        }
+        // NodeDuty::ReceiveGenesisProposal {
+        //     credit: credit.clone(),
+        //     sig: sig.clone(),
+        // }
+        // .into(),
         //
         // ------ metadata ------
         // Message::NodeQuery {
@@ -334,8 +352,8 @@ fn match_section_msg(msg: Message, origin: SrcLocation) -> Result<()> {
     }
 }
 
-fn match_node_msg(msg: Message, origin: SrcLocation) -> Result<()> {
-    debug!("Evaluating node node: {:?}", msg);
+fn match_node_msg(&self, msg: Message, origin: SrcLocation) -> Result<()> {
+    debug!("Evaluating node msg: {:?}", msg);
 
     match &msg {
         //
@@ -494,7 +512,7 @@ fn match_node_msg(msg: Message, origin: SrcLocation) -> Result<()> {
         _ => Ok(()),
     }
 }
-
+}
 // fn adult_state(&self) -> Result<&AdultState> {
 //     if let NodeState::Adult(state) = &self.state {
 //         Ok(state)
