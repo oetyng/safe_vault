@@ -28,6 +28,9 @@ pub enum Error {
     /// Not Section PublicKeySet.
     #[error("Not section public key set returned from routing")]
     NoSectionPublicKeySet,
+    /// Unable to parse genesis proposal.
+    #[error("Cannot parse genesis proposal at this stage")]
+    InvalidGenesisStage,
     /// Node not found for rewarding
     #[error("Node not found for rewards")]
     NodeNotFoundForReward,

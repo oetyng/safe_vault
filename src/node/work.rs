@@ -6,31 +6,31 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-mod elder_constellation;
+// mod elder_constellation;
 // pub mod genesis;
 // pub mod messaging;
 // mod msg_analysis;
 // mod network_events;
 
-use self::{
-    elder_constellation::ElderConstellation,
-    genesis::{GenesisAccumulation, GenesisProposal},
-};
+// use self::{
+//     // elder_constellation::ElderConstellation,
+//     // genesis::{GenesisAccumulation, GenesisProposal},
+// };
 use crate::{
-    Node,
     node::{
-        adult_duties::AdultDuties,
-        elder_duties::{ElderData, ElderDuties},
-        node_duties::messaging::Messaging,
+        // adult_duties::AdultDuties,
+        // elder_duties::{ElderData, ElderDuties},
+        // node_duties::messaging::Messaging,
+        genesis::{GenesisAccumulation, GenesisProposal, GenesisStage},
         node_ops::{
             ElderDuty, NetworkDuties, NetworkDuty, NodeDuty, NodeMessagingDuty, OutgoingMsg,
         },
         NodeInfo,
     },
-    AdultState, ElderState, Error, Network, NodeState, Result,
+    AdultState, ElderState, Error, Network, Node, NodeState, Result,
 };
 use log::{debug, info, trace};
-use msg_analysis::ReceivedMsgAnalysis;
+// use msg_analysis::ReceivedMsgAnalysis;
 // use network_events::w;
 use sn_data_types::{
     ActorHistory, Credit, NodeRewardStage, PublicKey, SignatureShare, SignedCredit, Token,
@@ -47,9 +47,9 @@ use std::{
     collections::{BTreeMap, VecDeque},
     mem,
 };
-use GenesisStage::*;
+// use GenesisStage::*;
 
-use super::genesis::GenesisStage;
+// use super::genesis::GenesisStage;
 
 // #[allow(clippy::large_enum_variant)]
 // enum Stage {
@@ -99,132 +99,130 @@ use super::genesis::GenesisStage;
 /// -> 2. Add own node id to rewards.
 /// -> 3. Add own wallet to rewards.
 // impl NodeDuties {
-    // pub async fn new(node_info: NodeInfo, network_api: Network) -> Result<Self> {
-    //     let state = NodeState::Infant(network_api.public_key().await);
-    //     let msg_analysis = ReceivedMsgAnalysis::new(state);
-    //     let network_events = w::new(msg_analysis);
-    //     let messaging = Messaging::new(network_api.clone());
-    //     Ok(Self {
-    //         node_info,
-    //         stage: Stage::Infant,
-    //         network_events,
-    //         messaging,
-    //         network_api,
-    //     })
-    // }
+// pub async fn new(node_info: NodeInfo, network_api: Network) -> Result<Self> {
+//     let state = NodeState::Infant(network_api.public_key().await);
+//     let msg_analysis = ReceivedMsgAnalysis::new(state);
+//     let network_events = w::new(msg_analysis);
+//     let messaging = Messaging::new(network_api.clone());
+//     Ok(Self {
+//         node_info,
+//         stage: Stage::Infant,
+//         network_events,
+//         messaging,
+//         network_api,
+//     })
+// }
 
-    // pub async fn process(&mut self, duty: NetworkDuty) -> Result<NetworkDuties> {
-    //     if self.network_api.is_elder().await {
-    //         info!("Processing op: {:?}", duty);
-    //     }
-    //     use NetworkDuty::*;
-    //     match duty {
-    //         RunAsAdult(duty) => {
-    //             if let Some(duties) = self.adult_duties() {
-    //                 duties.process_adult_duty(duty).await
-    //             } else {
-    //                 Err(Error::Logic("Currently not an Adult".to_string()))
-    //             }
-    //         }
-    //         RunAsElder(duty) => {
-    //             if let Some(duties) = self.elder_duties_mut() {
-    //                 duties.process_elder_duty(duty).await
-    //             } else if let Stage::Adult {
-    //                 ref mut queued_ops, ..
-    //             } = &mut self.stage
-    //             {
-    //                 queued_ops.push_back(duty);
-    //                 Ok(vec![])
-    //             } else {
-    //                 Err(Error::Logic("Cannot process the Elder duty".to_string()))
-    //             }
-    //         }
-    //         RunAsNode(duty) => self.process_node_duty(duty).await,
-    //         NoOp => Ok(vec![]),
-    //     }
-    // }
+// pub async fn process(&mut self, duty: NetworkDuty) -> Result<NetworkDuties> {
+//     if self.network_api.is_elder().await {
+//         info!("Processing op: {:?}", duty);
+//     }
+//     use NetworkDuty::*;
+//     match duty {
+//         RunAsAdult(duty) => {
+//             if let Some(duties) = self.adult_duties() {
+//                 duties.process_adult_duty(duty).await
+//             } else {
+//                 Err(Error::Logic("Currently not an Adult".to_string()))
+//             }
+//         }
+//         RunAsElder(duty) => {
+//             if let Some(duties) = self.elder_duties_mut() {
+//                 duties.process_elder_duty(duty).await
+//             } else if let Stage::Adult {
+//                 ref mut queued_ops, ..
+//             } = &mut self.stage
+//             {
+//                 queued_ops.push_back(duty);
+//                 Ok(vec![])
+//             } else {
+//                 Err(Error::Logic("Cannot process the Elder duty".to_string()))
+//             }
+//         }
+//         RunAsNode(duty) => self.process_node_duty(duty).await,
+//         NoOp => Ok(vec![]),
+//     }
+// }
 
-    // pub fn adult_duties(&mut self) -> Option<&mut AdultDuties> {
-    //     match &mut self.stage {
-    //         Stage::Adult { ref mut adult, .. } => Some(adult),
-    //         _ => None,
-    //     }
-    // }
+// pub fn adult_duties(&mut self) -> Option<&mut AdultDuties> {
+//     match &mut self.stage {
+//         Stage::Adult { ref mut adult, .. } => Some(adult),
+//         _ => None,
+//     }
+// }
 
-    // pub fn elder_duties(&self) -> Option<&ElderDuties> {
-    //     match &self.stage {
-    //         Stage::Elder(ref elder) => Some(elder.duties()),
-    //         _ => None,
-    //     }
-    // }
+// pub fn elder_duties(&self) -> Option<&ElderDuties> {
+//     match &self.stage {
+//         Stage::Elder(ref elder) => Some(elder.duties()),
+//         _ => None,
+//     }
+// }
 
-    // pub fn elder_duties_mut(&mut self) -> Option<&mut ElderDuties> {
-    //     match &mut self.stage {
-    //         Stage::Elder(ref mut elder) => Some(elder.duties_mut()),
-    //         _ => None,
-    //     }
-    // }
+// pub fn elder_duties_mut(&mut self) -> Option<&mut ElderDuties> {
+//     match &mut self.stage {
+//         Stage::Elder(ref mut elder) => Some(elder.duties_mut()),
+//         _ => None,
+//     }
+// }
 
-    // fn node_state(&mut self) -> Result<NodeState> {
-    //     Ok(match self.elder_duties() {
-    //         Some(duties) => NodeState::Elder(duties.state().clone()),
-    //         None => match self.adult_duties() {
-    //             Some(duties) => NodeState::Adult(duties.state().clone()),
-    //             None => {
-    //                 return Err(Error::InvalidOperation(
-    //                     "match self.adult_duties() is None".to_string(),
-    //                 ))
-    //             }
-    //         },
-    //     })
-    // }
+// fn node_state(&mut self) -> Result<NodeState> {
+//     Ok(match self.elder_duties() {
+//         Some(duties) => NodeState::Elder(duties.state().clone()),
+//         None => match self.adult_duties() {
+//             Some(duties) => NodeState::Adult(duties.state().clone()),
+//             None => {
+//                 return Err(Error::InvalidOperation(
+//                     "match self.adult_duties() is None".to_string(),
+//                 ))
+//             }
+//         },
+//     })
+// }
 
-    // async fn process_node_duty(&mut self, duty: NodeDuty) -> Result<NetworkDuties> {
-    //     use NodeDuty::*;
-    //     //info!("Processing Node duty: {:?}", duty);
-    //     match duty {
-    //         GetSectionPkSet { msg_id, origin } => self.section_pk_set(msg_id, origin).await,
-    //         BeginFormingGenesisSection => self.begin_forming_genesis_section().await,
-    //         ReceiveGenesisProposal { credit, sig } => {
-    //             self.receive_genesis_proposal(credit, sig).await
-    //         }
-    //         ReceiveGenesisAccumulation { signed_credit, sig } => {
-    //             self.receive_genesis_accumulation(signed_credit, sig).await
-    //         }
-    //         AssumeAdultDuties => self.assume_adult_duties().await,
-    //         CompleteTransitionToElder {
-    //             section_wallet,
-    //             node_rewards,
-    //             user_wallets,
-    //         } => {
-    //             self.complete_transition_to_elder(section_wallet, node_rewards, user_wallets, None)
-    //                 .await
-    //         }
-    //         UpdateElderInfo {
-    //             prefix,
-    //             key,
-    //             sibling_key,
-    //             ..
-    //         } => self.update_elder_info(prefix, key, sibling_key).await,
-    //         CompleteElderChange {
-    //             previous_key,
-    //             new_key,
-    //         } => self.complete_elder_change(previous_key, new_key).await,
-    //         InformNewElders => self.inform_new_elders().await,
-    //         ProcessMessaging(duty) => self.messaging.process_messaging_duty(duty).await,
-    //         ProcessNetworkEvent(event) => {
-    //             self.network_events
-    //                 .process_network_event(event, &self.network_api)
-    //                 .await
-    //         }
-    //         NoOp => Ok(vec![]),
-    //         StorageFull => self.notify_section_of_our_storage().await,
-    //     }
-    // }
+// async fn process_node_duty(&mut self, duty: NodeDuty) -> Result<NetworkDuties> {
+//     use NodeDuty::*;
+//     //info!("Processing Node duty: {:?}", duty);
+//     match duty {
+//         GetSectionPkSet { msg_id, origin } => self.section_pk_set(msg_id, origin).await,
+//         BeginFormingGenesisSection => self.begin_forming_genesis_section().await,
+//         ReceiveGenesisProposal { credit, sig } => {
+//             self.receive_genesis_proposal(credit, sig).await
+//         }
+//         ReceiveGenesisAccumulation { signed_credit, sig } => {
+//             self.receive_genesis_accumulation(signed_credit, sig).await
+//         }
+//         AssumeAdultDuties => self.assume_adult_duties().await,
+//         CompleteTransitionToElder {
+//             section_wallet,
+//             node_rewards,
+//             user_wallets,
+//         } => {
+//             self.complete_transition_to_elder(section_wallet, node_rewards, user_wallets, None)
+//                 .await
+//         }
+//         UpdateElderInfo {
+//             prefix,
+//             key,
+//             sibling_key,
+//             ..
+//         } => self.update_elder_info(prefix, key, sibling_key).await,
+//         CompleteElderChange {
+//             previous_key,
+//             new_key,
+//         } => self.complete_elder_change(previous_key, new_key).await,
+//         InformNewElders => self.inform_new_elders().await,
+//         ProcessMessaging(duty) => self.messaging.process_messaging_duty(duty).await,
+//         ProcessNetworkEvent(event) => {
+//             self.network_events
+//                 .process_network_event(event, &self.network_api)
+//                 .await
+//         }
+//         NoOp => Ok(vec![]),
+//         StorageFull => self.notify_section_of_our_storage().await,
+//     }
+// }
 
-    impl Node {
-
-    
+impl Node {
     // async fn section_pk_set(
     //     &self,
     //     msg_id: MessageId,
@@ -556,7 +554,7 @@ use super::genesis::GenesisStage;
         //     return Ok(vec![]);
         // }
 
-        // let (stage, cmd) = 
+        // let (stage, cmd) =
         let mut stage = self.genesis_stage.lock().await;
         let new_stage = match *stage {
             GenesisStage::AwaitingGenesisThreshold => {
@@ -568,7 +566,12 @@ use super::genesis::GenesisStage;
                 let credit_sig_share = self.sign_as_elder(&credit).await?;
                 let _ = signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
 
-                let dst = DstLocation::Section(XorName::from(self.network_api.section_public_key().await.ok_or(Error::NoSectionPublicKey)?));
+                let dst = DstLocation::Section(XorName::from(
+                    self.network_api
+                        .section_public_key()
+                        .await
+                        .ok_or(Error::NoSectionPublicKey)?,
+                ));
                 let stage = GenesisStage::ProposingGenesis(GenesisProposal {
                     // elder_state,
                     proposal: credit.clone(),
@@ -576,32 +579,37 @@ use super::genesis::GenesisStage;
                     pending_agreement: None,
                 });
 
+                self.messaging
+                    .send(OutgoingMsg {
+                        msg: Message::NodeCmd {
+                            cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
+                                credit: credit,
+                                sig: credit_sig_share,
+                            }),
+                            id: MessageId::new(),
+                            target_section_pk: None,
+                        },
+                        section_source: false, // sent as single node
+                        dst,
+                        aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
+                    })
+                    .await;
 
-                let cmd = self.messaging.send( OutgoingMsg {
-                    msg: Message::NodeCmd {
-                        cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
-                            credit,
-                            sig: credit_sig_share,
-                        }),
-                        id: MessageId::new(),
-                        target_section_pk: None,
-                    },
-                    section_source: false, // sent as single node
-                    dst,
-                    aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
-                });
-
-                (stage, cmd)
+                stage
             }
             GenesisStage::ProposingGenesis(ref mut bootstrap) => {
                 debug!("Adding incoming genesis proposal.");
-                let section_pk_set = self.network_api.public_key_set().await.map_err(|_| Error::NoSectionPublicKeySet)?;
+                let section_pk_set = self
+                    .network_api
+                    .public_key_set()
+                    .await
+                    .map_err(|_| Error::NoSectionPublicKeySet)?;
+                let section_pk = PublicKey::Bls(section_pk_set.public_key());
                 bootstrap.add(sig, section_pk_set)?;
                 if let Some(signed_credit) = &bootstrap.pending_agreement {
                     // replicas signatures over > signed_credit <
                     let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
-                    let credit_sig_share =
-                        self.sign_as_elder(&signed_credit).await?;
+                    let credit_sig_share = self.sign_as_elder(&signed_credit).await?;
                     let _ =
                         signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
 
@@ -612,7 +620,7 @@ use super::genesis::GenesisStage;
                         pending_agreement: None,
                     });
 
-                    let cmd = self.messaging.send(OutgoingMsg {
+                    self.messaging.send(OutgoingMsg {
                         msg: Message::NodeCmd {
                             cmd: NodeCmd::System(NodeSystemCmd::AccumulateGenesis {
                                 signed_credit: signed_credit.clone(),
@@ -622,13 +630,11 @@ use super::genesis::GenesisStage;
                             target_section_pk: None,
                         },
                         section_source: false, // sent as single node
-                        dst: DstLocation::Section(
-                            XorName::from(PublicKey::Bls(section_pk_set.public_key())),
-                        ),
+                        dst: DstLocation::Section(XorName::from(section_pk)),
                         aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
                     });
 
-                    (stage, cmd)
+                    stage
                 } else {
                     return Ok(());
                 }
@@ -640,7 +646,7 @@ use super::genesis::GenesisStage;
             }
         };
 
-        // self.stage = stage;
+        *stage = new_stage;
         Ok(())
         // Ok(NetworkDuties::from(cmd))
     }
@@ -649,33 +655,42 @@ use super::genesis::GenesisStage;
         &mut self,
         signed_credit: SignedCredit,
         sig: SignatureShare,
-    ) -> Result<NetworkDuties> {
-        if matches!(self.stage, Stage::Elder(_)) {
-            return Ok(vec![]);
-        }
+    ) -> Result<()> {
+        // if matches!(self.stage, Stage::Elder(_)) {
+        //     return Ok(vec![]);
+        // }
+        let mut stage = self.genesis_stage.lock().await;
 
-        match self.stage {
-            Stage::Genesis(ProposingGenesis(ref mut bootstrap)) => {
+        let new_stage = match *stage {
+            GenesisStage::ProposingGenesis(ref mut bootstrap) => {
                 // replicas signatures over > signed_credit <
                 let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
                 let _ = signatures.insert(sig.index, sig.share);
 
-                let credit_sig_share = bootstrap.elder_state.sign_as_elder(&signed_credit).await?;
+                let credit_sig_share = self.sign_as_elder(&signed_credit).await?;
                 let _ = signatures.insert(credit_sig_share.index, credit_sig_share.share);
 
-                self.stage = Stage::Genesis(AccumulatingGenesis(GenesisAccumulation {
-                    elder_state: bootstrap.elder_state.clone(),
-                    agreed_proposal: signed_credit,
-                    signatures,
-                    pending_agreement: None,
-                }));
-                Ok(vec![])
+                Ok(Some(GenesisStage::AccumulatingGenesis(
+                    GenesisAccumulation {
+                        // elder_state: bootstrap.elder_state.clone(),
+                        agreed_proposal: signed_credit,
+                        signatures,
+                        pending_agreement: None,
+                    },
+                )))
+                // Ok(())
             }
-            Stage::Genesis(AccumulatingGenesis(ref mut bootstrap)) => {
-                bootstrap.add(sig)?;
+            GenesisStage::AccumulatingGenesis(ref mut bootstrap) => {
+                let section_pk_set = self
+                    .network_api
+                    .public_key_set()
+                    .await
+                    .map_err(|_| Error::NoSectionPublicKeySet)?;
+                let section_pk = PublicKey::Bls(section_pk_set.public_key());
+                bootstrap.add(sig, section_pk_set)?;
                 if let Some(genesis) = bootstrap.pending_agreement.take() {
                     // TODO: do not take this? (in case of fail further blow)
-                    let credit_sig_share = bootstrap.elder_state.sign_as_elder(&genesis).await?;
+                    let credit_sig_share = self.sign_as_elder(&genesis).await?;
                     let _ = bootstrap
                         .signatures
                         .insert(credit_sig_share.index, credit_sig_share.share.clone());
@@ -685,26 +700,32 @@ use super::genesis::GenesisStage;
                     };
 
                     debug!(">>>>>>>>>>>>>>>>>>>>>>>>. GENSIS AGREEMENT PROOFED");
-                    return self
-                        .complete_transition_to_elder(
-                            WalletInfo {
-                                replicas: genesis.credit_proof.debiting_replicas_keys.clone(),
-                                history: ActorHistory {
-                                    credits: vec![genesis.credit_proof.clone()],
-                                    debits: vec![],
-                                },
-                            },
-                            Default::default(),
-                            Default::default(),
-                            Some(genesis),
-                        )
-                        .await;
+                    // return self
+                    //     .complete_transition_to_elder(
+                    //         WalletInfo {
+                    //             replicas: genesis.credit_proof.debiting_replicas_keys.clone(),
+                    //             history: ActorHistory {
+                    //                 credits: vec![genesis.credit_proof.clone()],
+                    //                 debits: vec![],
+                    //             },
+                    //         },
+                    //         Default::default(),
+                    //         Default::default(),
+                    //         Some(genesis),
+                    //     )
+                    //     .await;
                 }
-                Ok(vec![])
+
+                Ok(None)
+                // GenesisStage::AccumulatingGenesis(bootstrap)
+                // Ok()
+                // Ok(vec![])
             }
-            _ => Err(Error::InvalidOperation(
-                "invalid self.stage at fn receive_genesis_accumulation".to_string(),
-            )),
+            _ => Err(Error::InvalidGenesisStage),
+        }?;
+        if let Some(new) = new_stage {
+            *stage = new;
         }
+        Ok(())
     }
 }

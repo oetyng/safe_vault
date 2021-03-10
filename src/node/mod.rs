@@ -228,11 +228,9 @@ impl Node {
         //let info = self.network_api.our_connection_info().await;
         //info!("Listening for routing events at: {}", info);
         while let Some(event) = self.network_events.next().await {
-          
             // tokio::spawn(
-                self.process_network_event(event).await?
+            self.process_network_event(event).await?
             // );
-
         }
 
         Ok(())
@@ -360,7 +358,7 @@ impl Node {
                         if self.is_forming_genesis().await {
                             // Ok(NetworkDuties::from(NodeDuty::BeginFormingGenesisSection))
                             self.begin_forming_genesis_section().await
-                            
+
                             // Ok(())
                         } else {
                             // After genesis section formation, any new Elder will be informed

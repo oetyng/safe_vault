@@ -70,7 +70,11 @@ impl Messaging {
         )
     }
 
-    pub(crate) async fn send_to_nodes(&self, targets: BTreeSet<XorName>, msg: &Message) -> Result<()> {
+    pub(crate) async fn send_to_nodes(
+        &self,
+        targets: BTreeSet<XorName>,
+        msg: &Message,
+    ) -> Result<()> {
         let name = self.network.our_name().await;
         let bytes = &msg.serialize()?;
         for target in targets {
