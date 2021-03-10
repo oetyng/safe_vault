@@ -98,7 +98,6 @@ pub enum NodeDuty {
         /// The new section key.
         new_key: PublicKey,
     },
-    InformNewElders,
     /// Initiates the section wallet.
     CompleteTransitionToElder {
         section_wallet: WalletInfo,
@@ -135,7 +134,6 @@ impl From<NodeDuty> for NetworkDuty {
 impl Debug for NodeDuty {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InformNewElders => write!(f, "InformNewElders"),
             Self::GetSectionPkSet { .. } => write!(f, "GetSectionPkSet"),
             Self::ReceiveGenesisProposal { .. } => write!(f, "ReceiveGenesisProposal"),
             Self::ReceiveGenesisAccumulation { .. } => write!(f, "ReceiveGenesisAccumulation"),

@@ -377,6 +377,9 @@ impl SectionFunds {
             return Err(Error::Logic("Invalid recipient for transition".to_string()));
         }
 
+        let previous_key = self.actor.id();
+        let new_key = next_actor.id();
+
         // Set the next actor to be our current.
         self.actor = next_actor;
 
@@ -404,7 +407,10 @@ impl SectionFunds {
         info!("Wallet transition is completed!");
 
         // inform the new Elders
-        Ok(NetworkDuties::from(NodeDuty::InformNewElders))
+        Ok(NetworkDuties::from(NodeDuty::CompleteElderChange {
+            previous_key,
+            new_key,
+        }))
     }
 
     /// (potentially leading to Wallet transition, step 3.)

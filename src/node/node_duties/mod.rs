@@ -161,20 +161,6 @@ impl NodeDuties {
         }
     }
 
-    fn node_state(&mut self) -> Result<NodeState> {
-        Ok(match self.elder_duties() {
-            Some(duties) => NodeState::Elder(duties.state().clone()),
-            None => match self.adult_duties() {
-                Some(duties) => NodeState::Adult(duties.state().clone()),
-                None => {
-                    return Err(Error::InvalidOperation(
-                        "match self.adult_duties() is None".to_string(),
-                    ))
-                }
-            },
-        })
-    }
-
     async fn process_node_duty(&mut self, duty: NodeDuty) -> Result<NetworkDuties> {
         use NodeDuty::*;
         //info!("Processing Node duty: {:?}", duty);
@@ -206,7 +192,6 @@ impl NodeDuties {
                 previous_key,
                 new_key,
             } => self.complete_elder_change(previous_key, new_key).await,
-            InformNewElders => self.inform_new_elders().await,
             ProcessMessaging(duty) => self.messaging.process_messaging_duty(duty).await,
             ProcessNetworkEvent(event) => {
                 self.network_events
@@ -235,41 +220,6 @@ impl NodeDuties {
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: origin.to_dst(),
-            aggregation: Aggregation::AtDestination,
-        })))
-    }
-
-    async fn inform_new_elders(&mut self) -> Result<NetworkDuties> {
-        let duties = self
-            .elder_duties()
-            .ok_or_else(|| Error::Logic("Only valid on Elders".to_string()))?;
-
-        let peers = self.network_api.our_prefix().await.name();
-        let section_key = self
-            .network_api
-            .section_public_key()
-            .await
-            .ok_or_else(|| Error::Logic("Section public key is missing".to_string()))?;
-
-        let msg_id = MessageId::combine(vec![peers, section_key.into()]);
-
-        let section_wallet = duties.section_wallet();
-        let node_rewards = duties.node_rewards();
-        let user_wallets = duties.user_wallets();
-
-        Ok(NetworkDuties::from(NodeMessagingDuty::Send(OutgoingMsg {
-            msg: Message::NodeEvent {
-                event: NodeEvent::PromotedToElder {
-                    section_wallet,
-                    node_rewards,
-                    user_wallets,
-                },
-                correlation_id: msg_id,
-                id: MessageId::in_response_to(&msg_id),
-                target_section_pk: None,
-            },
-            section_source: false, // strictly this is not correct, but we don't expect responses to an event..
-            dst: DstLocation::Section(peers), // swarming to our peers, if splitting many will be needing this, otherwise only one..
             aggregation: Aggregation::AtDestination,
         })))
     }
@@ -484,6 +434,11 @@ impl NodeDuties {
             .into_iter()
             .map(|d| NetworkDuty::from(d))
             .collect();
+
+        for op in &ops {
+            info!("Queued op: {:?}", op);
+        }
+
         if register_wallet {
             ops.extend(NetworkDuties::from(self.register_wallet().await?))
         }
@@ -526,11 +481,52 @@ impl NodeDuties {
         match &mut self.stage {
             Stage::Infant | Stage::Adult { .. } | Stage::Genesis(_) => Ok(vec![]), // Should be unreachable
             Stage::Elder(elder) => {
-                elder
-                    .complete_elder_change(&self.node_info, previous_key, new_key)
-                    .await
+                let mut ops = vec![];
+                ops.extend(
+                    elder
+                        .complete_elder_change(&self.node_info, previous_key, new_key)
+                        .await?,
+                );
+                ops.extend(self.inform_new_elders().await?);
+                Ok(ops)
             }
         }
+    }
+
+    async fn inform_new_elders(&mut self) -> Result<NetworkDuties> {
+        let duties = self
+            .elder_duties()
+            .ok_or_else(|| Error::Logic("Only valid on Elders".to_string()))?;
+
+        let peers = self.network_api.our_prefix().await.name();
+        let section_key = self
+            .network_api
+            .section_public_key()
+            .await
+            .ok_or_else(|| Error::Logic("Section public key is missing".to_string()))?;
+
+        let msg_id = MessageId::combine(vec![peers, section_key.into()]);
+
+        let section_wallet = duties.section_wallet();
+        let node_rewards = duties.node_rewards();
+        let user_wallets = duties.user_wallets();
+        // load all metadata registries as well
+
+        Ok(NetworkDuties::from(NodeMessagingDuty::Send(OutgoingMsg {
+            msg: Message::NodeEvent {
+                event: NodeEvent::PromotedToElder {
+                    section_wallet,
+                    node_rewards,
+                    user_wallets,
+                },
+                correlation_id: msg_id,
+                id: MessageId::in_response_to(&msg_id),
+                target_section_pk: None,
+            },
+            section_source: false, // strictly this is not correct, but we don't expect responses to an event..
+            dst: DstLocation::Section(peers), // swarming to our peers, if splitting many will be needing this, otherwise only one..
+            aggregation: Aggregation::None,   // TEMP: Should be AtDestination
+        })))
     }
 
     // TODO: validate the credit...
