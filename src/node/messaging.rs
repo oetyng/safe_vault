@@ -29,22 +29,22 @@ impl Messaging {
         Self { network }
     }
 
-    pub async fn process_messaging_duty(&self, duty: NodeMessagingDuty) -> Result<()> {
-        use NodeMessagingDuty::*;
-        match duty {
-            Send(msg) => {
-                self.send(msg).await?;
-                Ok(())
-            }
-            SendToAdults { targets, msg } => {
-                self.send_to_nodes(targets, &msg).await?;
-                Ok(())
-            }
-            NoOp => Ok(()),
-        }
-    }
+    // pub async fn process_messaging_duty(&self, duty: NodeMessagingDuty) -> Result<()> {
+    //     use NodeMessagingDuty::*;
+    //     match duty {
+    //         Send(msg) => {
+    //             self.send(msg).await?;
+    //             Ok(())
+    //         }
+    //         SendToAdults { targets, msg } => {
+    //             self.send_to_nodes(targets, &msg).await?;
+    //             Ok(())
+    //         }
+    //         NoOp => Ok(()),
+    //     }
+    // }
 
-    async fn send(&self, msg: OutgoingMsg) -> Result<()> {
+    pub(crate) async fn send(&self, msg: OutgoingMsg) -> Result<()> {
         let src = if msg.section_source {
             SrcLocation::Section(self.network.our_prefix().await.name())
         } else {
@@ -70,7 +70,7 @@ impl Messaging {
         )
     }
 
-    async fn send_to_nodes(&self, targets: BTreeSet<XorName>, msg: &Message) -> Result<()> {
+    pub(crate) async fn send_to_nodes(&self, targets: BTreeSet<XorName>, msg: &Message) -> Result<()> {
         let name = self.network.our_name().await;
         let bytes = &msg.serialize()?;
         for target in targets {

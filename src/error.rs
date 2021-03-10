@@ -25,6 +25,9 @@ pub enum Error {
     /// Not Section PublicKey.
     #[error("Not section public key returned from routing")]
     NoSectionPublicKey,
+    /// Not Section PublicKeySet.
+    #[error("Not section public key set returned from routing")]
+    NoSectionPublicKeySet,
     /// Node not found for rewarding
     #[error("Node not found for rewards")]
     NodeNotFoundForReward,

@@ -390,7 +390,7 @@ use super::genesis::GenesisStage;
             let dst = DstLocation::Section(credit.recipient.into());
 
             self.messaging
-                .process_messaging_duty(NodeMessagingDuty::Send(OutgoingMsg {
+                .send(OutgoingMsg {
                     msg: Message::NodeCmd {
                         cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
                             credit,
@@ -402,7 +402,7 @@ use super::genesis::GenesisStage;
                     dst,
                     section_source: false, // sent as single node
                     aggregation: Aggregation::None,
-                }))
+                })
                 .await?;
 
             // return Ok(NetworkDuties::from());
@@ -577,7 +577,7 @@ use super::genesis::GenesisStage;
                 });
 
 
-                let cmd = NodeMessagingDuty::Send(OutgoingMsg {
+                let cmd = self.messaging.send( OutgoingMsg {
                     msg: Message::NodeCmd {
                         cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
                             credit,
@@ -595,23 +595,24 @@ use super::genesis::GenesisStage;
             }
             GenesisStage::ProposingGenesis(ref mut bootstrap) => {
                 debug!("Adding incoming genesis proposal.");
-                bootstrap.add(sig)?;
+                let section_pk_set = self.network_api.public_key_set().await.map_err(|_| Error::NoSectionPublicKeySet)?;
+                bootstrap.add(sig, section_pk_set)?;
                 if let Some(signed_credit) = &bootstrap.pending_agreement {
                     // replicas signatures over > signed_credit <
                     let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
                     let credit_sig_share =
-                        bootstrap.elder_state.sign_as_elder(&signed_credit).await?;
+                        self.sign_as_elder(&signed_credit).await?;
                     let _ =
                         signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
 
-                    let stage = Stage::Genesis(AccumulatingGenesis(GenesisAccumulation {
-                        elder_state: bootstrap.elder_state.clone(),
+                    let stage = GenesisStage::AccumulatingGenesis(GenesisAccumulation {
+                        // elder_state: bootstrap.elder_state.clone(),
                         agreed_proposal: signed_credit.clone(),
                         signatures,
                         pending_agreement: None,
-                    }));
+                    });
 
-                    let cmd = NodeMessagingDuty::Send(OutgoingMsg {
+                    let cmd = self.messaging.send(OutgoingMsg {
                         msg: Message::NodeCmd {
                             cmd: NodeCmd::System(NodeSystemCmd::AccumulateGenesis {
                                 signed_credit: signed_credit.clone(),
@@ -622,7 +623,7 @@ use super::genesis::GenesisStage;
                         },
                         section_source: false, // sent as single node
                         dst: DstLocation::Section(
-                            bootstrap.elder_state.section_public_key().into(),
+                            XorName::from(PublicKey::Bls(section_pk_set.public_key())),
                         ),
                         aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
                     });
