@@ -88,7 +88,7 @@ pub struct Node {
     sibling_public_key: Option<PublicKey>,
     section_chain: SectionChain,
     elders: Vec<(XorName, SocketAddr)>,
-    adult_reader: AdultReader,
+    // adult_reader: AdultReader,
     interaction: NodeInteraction,
     node_signing: NodeSigning,
 
@@ -185,7 +185,7 @@ impl Node {
             sibling_public_key: network_api.sibling_public_key().await,
             section_chain: network_api.section_chain().await,
             elders: network_api.our_elder_addresses().await,
-            adult_reader: AdultReader::new(network_api.clone()),
+            // adult_reader: AdultReader::new(network_api.clone()),
             interaction: NodeInteraction::new(network_api.clone()),
             node_signing: NodeSigning::new(network_api.clone()),
 

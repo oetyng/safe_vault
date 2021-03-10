@@ -286,28 +286,28 @@ pub struct AdultReader {
     network: Network,
 }
 
-impl AdultReader {
-    /// Access to the current state of our adult constellation
-    pub fn new(network: Network) -> Self {
-        Self { network }
-    }
+// impl AdultReader {
+//     /// Access to the current state of our adult constellation
+//     pub fn new(network: Network) -> Self {
+//         Self { network }
+//     }
 
-    /// Dynamic state
-    pub async fn our_adults(&self) -> Vec<XorName> {
-        self.network.our_adults().await
-    }
+//     /// Dynamic state
+//     pub async fn our_adults(&self) -> Vec<XorName> {
+//         self.network.our_adults().await
+//     }
 
-    /// Dynamic state
-    pub async fn our_adults_sorted_by_distance_to(
-        &self,
-        name: &XorName,
-        count: usize,
-    ) -> Vec<XorName> {
-        self.network
-            .our_adults_sorted_by_distance_to(name, count)
-            .await
-    }
-}
+//     /// Dynamic state
+//     pub async fn our_adults_sorted_by_distance_to(
+//         &self,
+//         name: &XorName,
+//         count: usize,
+//     ) -> Vec<XorName> {
+//         self.network
+//             .our_adults_sorted_by_distance_to(name, count)
+//             .await
+//     }
+// }
 
 #[derive(Clone)]
 pub struct NodeSigning {

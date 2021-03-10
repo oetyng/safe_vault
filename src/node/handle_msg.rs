@@ -46,7 +46,7 @@ use sn_routing::XorName;
         src: SrcLocation,
         dst: DstLocation,
     ) -> Result<()> {
-        debug!("Evaluating received msg. {:?}.", msg);
+        debug!(">>>>>>>>>>>> Evaluating received msg. {:?}.", msg);
         let msg_id = msg.id();
         if let SrcLocation::EndUser(origin) = src {
             match_user_sent_msg(msg.clone(), origin)?
@@ -126,7 +126,7 @@ use sn_routing::XorName;
     }
 
     fn match_section_msg( msg: Message, origin: SrcLocation) -> Result<()> {
-        debug!("Evaluating received msg for Section: {:?}", msg);
+        debug!("Evaluating section message: {:?}", msg);
 
         match &msg {
             //
@@ -339,7 +339,7 @@ use sn_routing::XorName;
     }
 
     fn match_node_msg(msg: Message, origin: SrcLocation) -> Result<()> {
-        debug!("Evaluating received msg for Node: {:?}", msg);
+        debug!("Evaluating node node: {:?}", msg);
 
         match &msg {
             //
