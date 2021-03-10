@@ -75,7 +75,7 @@ async-trait = "0.1.42"
 
   [dependencies.tokio]
   version = "~0.2.5"
-  features = [ "macros", "fs", "sync" ]
+  features = [ "macros", "fs", "sync", "rt-threaded" ]
 
 [dev_dependencies]
 maplit = "1.0.1"

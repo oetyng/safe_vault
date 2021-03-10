@@ -13,37 +13,42 @@ mod node_ops;
 pub mod state_db;
 use serde::Serialize;
 mod genesis;
-mod messaging;
 mod handle_msg;
+mod messaging;
 
 use hex_fmt::HexFmt;
 
-use handle_msg::handle_msg;
 use crate::{
     chunk_store::UsedSpace,
+    network_state::{
+        // AdultReader,
+        NodeInteraction,
+        NodeSigning,
+    },
     node::{
-        genesis::GenesisStage, genesis::GenesisProposal, messaging::Messaging,
+        genesis::GenesisProposal,
+        genesis::GenesisStage,
+        messaging::Messaging,
         // node_duties::{NodeDuties, GenesisStage, genesis::GenesisProposal, messaging::Messaging},
         node_ops::{NetworkDuties, NodeDuty, NodeMessagingDuty, OutgoingMsg},
         // TODO: strip out NodeMessagingDuty and just pass in msg
         state_db::{get_age_group, store_age_group, store_new_reward_keypair, AgeGroup},
-
     },
-    network_state::{AdultReader, NodeInteraction, NodeSigning},
     Config, Error, Network, NodeInfo, Result,
 };
 use bls::SecretKey;
-use log::{error, debug, info, trace};
+use handle_msg::handle_msg;
+use log::{debug, error, info, trace};
 use sn_data_types::{
-    ActorHistory, Credit, NodeRewardStage, PublicKey,ReplicaPublicKeySet,Signature, SignatureShare, SignedCredit, Token,
-    TransferPropagated, WalletInfo,
+    ActorHistory, Credit, NodeRewardStage, PublicKey, ReplicaPublicKeySet, Signature,
+    SignatureShare, SignedCredit, Token, TransferPropagated, WalletInfo,
 };
-use sn_routing::{EventStream, MIN_AGE, Event as RoutingEvent, NodeElderChange};
+use sn_routing::{Event as RoutingEvent, EventStream, NodeElderChange, MIN_AGE};
+use std::collections::BTreeMap;
 use std::{
     fmt::{self, Display, Formatter},
     net::SocketAddr,
 };
-use std::collections::BTreeMap;
 
 // use bls::{PublicKeySet};
 use ed25519_dalek::PublicKey as Ed25519PublicKey;
@@ -51,7 +56,11 @@ use ed25519_dalek::PublicKey as Ed25519PublicKey;
 // use log::debug;
 // use serde::Serialize;
 // use sn_data_types::{PublicKey, Signature, SignatureShare};
-use sn_messaging::{client::TransientElderKey, DstLocation, client::{Message, MsgSender, NodeCmd, NodeSystemCmd}, MessageId, Aggregation};
+use sn_messaging::{
+    client::TransientElderKey,
+    client::{Message, MsgSender, NodeCmd, NodeSystemCmd},
+    Aggregation, DstLocation, MessageId,
+};
 use sn_routing::SectionChain;
 // use std::{
 //     collections::BTreeSet,
@@ -59,8 +68,9 @@ use sn_routing::SectionChain;
 //     path::{Path, PathBuf},
 // };
 
-use sn_routing::{XorName, Prefix, ELDER_SIZE as GENESIS_ELDER_COUNT};
-
+use futures::lock::Mutex;
+use sn_routing::{Prefix, XorName, ELDER_SIZE as GENESIS_ELDER_COUNT};
+use std::sync::Arc;
 
 /// Main node struct.
 pub struct Node {
@@ -85,14 +95,14 @@ pub struct Node {
     node_id: Ed25519PublicKey,
     // key_index: usize,
     // public_key_set: ReplicaPublicKeySet,
-    sibling_public_key: Option<PublicKey>,
-    section_chain: SectionChain,
-    elders: Vec<(XorName, SocketAddr)>,
+    // sibling_public_key: Option<PublicKey>,
+    // section_chain: SectionChain,
+    // elders: Vec<(XorName, SocketAddr)>,
     // adult_reader: AdultReader,
     interaction: NodeInteraction,
     node_signing: NodeSigning,
 
-    genesis_stage: GenesisStage
+    genesis_stage: Arc<Mutex<GenesisStage>>,
 }
 
 impl Node {
@@ -118,7 +128,8 @@ impl Node {
                 }
             };
             res
-        }.await;
+        }
+        .await;
         // let age_group_task = async move {
         //     let res: Result<AgeGroup>;
         //     if let Some(age_group) = get_age_group(&root_dir).await? {
@@ -130,7 +141,7 @@ impl Node {
         //     };
         //     res
         // };
-        
+
         let reward_key = reward_key_task?;
         debug!("NEW NODE after reward key");
         // let (reward_key, _age_group) = tokio::try_join!(reward_key_task, age_group_task)?;
@@ -141,9 +152,6 @@ impl Node {
             root_dir: root_dir_buf,
             used_space: UsedSpace::new(config.max_capacity()),
             reward_key,
-
-
-          
         };
 
         // use AgeGroup::*;
@@ -153,7 +161,6 @@ impl Node {
         // } else {
         //     Infant
         // };
-
 
         let messaging = Messaging::new(network_api.clone());
 
@@ -174,7 +181,7 @@ impl Node {
         //         Err(error)
         //     }
         // }?;
-        
+
         let node = Self {
             // duties: NodeDuties::new(node_info, network_api.clone()).await?,
             prefix: Some(network_api.our_prefix().await),
@@ -182,9 +189,9 @@ impl Node {
             node_id: network_api.public_key().await,
             // key_index: index,
             // public_key_set: network_api.public_key_set().await?,
-            sibling_public_key: network_api.sibling_public_key().await,
-            section_chain: network_api.section_chain().await,
-            elders: network_api.our_elder_addresses().await,
+            // sibling_public_key: network_api.sibling_public_key().await,
+            // section_chain: network_api.section_chain().await,
+            // elders: network_api.our_elder_addresses().await,
             // adult_reader: AdultReader::new(network_api.clone()),
             interaction: NodeInteraction::new(network_api.clone()),
             node_signing: NodeSigning::new(network_api.clone()),
@@ -195,7 +202,7 @@ impl Node {
             network_events,
             messaging,
 
-            genesis_stage: GenesisStage::None
+            genesis_stage: Arc::new(Mutex::new(GenesisStage::None)),
         };
 
         // node.process_while_any().await;
@@ -221,7 +228,10 @@ impl Node {
         //info!("Listening for routing events at: {}", info);
         while let Some(event) = self.network_events.next().await {
             //info!("New event received from the Network: {:?}", event);
-            self.process_network_event(event).await?;
+
+            // let network = self.network_api.clone();
+            // TODO: using multi-threaded scheduler maybe this isn't needed?
+            tokio::spawn(self.process_network_event(event));
 
             // self.process_while_any(Ok(NetworkDuties::from(NodeDuty::ProcessNetworkEvent(
             //     event,
@@ -239,8 +249,11 @@ impl Node {
 
     //     // Ok()
     // }
-    
-    async fn setup_genesis(&mut self) -> Result<()> {
+
+    async fn setup_genesis(
+        &self,
+        // network_api: Network
+    ) -> Result<()> {
         // if !self.node_info.genesis {
         //     return Err(Error::InvalidOperation(
         //         "only genesis node can transition to Elder as Infant".to_string(),
@@ -266,14 +279,20 @@ impl Node {
             let credit = Credit {
                 id: Default::default(),
                 amount: Token::from_nano(genesis_balance),
-                recipient: self.network_api.section_public_key().await.ok_or(Error::NoSectionPublicKey)?,
+                recipient: self
+                    .network_api
+                    .section_public_key()
+                    .await
+                    .ok_or(Error::NoSectionPublicKey)?,
                 msg: "genesis".to_string(),
             };
             let mut signatures: BTreeMap<usize, bls::SignatureShare> = Default::default();
             let credit_sig_share = self.sign_as_elder(&credit).await?;
             let _ = signatures.insert(credit_sig_share.index, credit_sig_share.share.clone());
-            
-            self.genesis_stage = GenesisStage::ProposingGenesis(GenesisProposal {
+
+            let mut stage = self.genesis_stage.lock().await;
+
+            *stage = GenesisStage::ProposingGenesis(GenesisProposal {
                 proposal: credit.clone(),
                 signatures,
                 pending_agreement: None,
@@ -281,9 +300,8 @@ impl Node {
 
             let dst = DstLocation::Section(credit.recipient.into());
 
-
-            self.messaging.process_messaging_duty(
-                NodeMessagingDuty::Send(OutgoingMsg {
+            self.messaging
+                .process_messaging_duty(NodeMessagingDuty::Send(OutgoingMsg {
                     msg: Message::NodeCmd {
                         cmd: NodeCmd::System(NodeSystemCmd::ProposeGenesis {
                             credit,
@@ -295,22 +313,20 @@ impl Node {
                     dst,
                     section_source: false, // sent as single node
                     aggregation: Aggregation::None,
-                })
-                
-            ).await?;
+                }))
+                .await?;
 
-            
             // return Ok(NetworkDuties::from());
         } else if is_genesis_section
             && elder_count < GENESIS_ELDER_COUNT
             && section_chain_len <= GENESIS_ELDER_COUNT
         {
             debug!("AwaitingGenesisThreshold!");
-            self.genesis_stage = GenesisStage::AwaitingGenesisThreshold;
-            // return Ok(vec![]);
-        } 
-        else {
+            let mut stage = self.genesis_stage.lock().await;
 
+            *stage = GenesisStage::AwaitingGenesisThreshold;
+            // return Ok(vec![]);
+        } else {
             debug!("HITTING GENESIS ELSE FOR SOME REASON....");
             // Err(Error::InvalidOperation(
             //     "Only for genesis formation".to_string(),
@@ -320,21 +336,21 @@ impl Node {
     }
     /// Process any routing event
     pub async fn process_network_event(
-        &mut self,
+        &self,
         event: RoutingEvent,
-        // network_api: &Network,
+        // network_api: Network,
     ) -> Result<()> {
-        let network_api = &self.network_api;
+        // let network_api = &self.network_api;
 
         // use ElderDuty::*;
         trace!("Processing Routing Event: {:?}", event);
         match event {
             RoutingEvent::Genesis => {
                 self.setup_genesis().await
-                   
+
                 // Ok(())
                 // Ok(NetworkDuties::from(NodeDuty::BeginFormingGenesisSection))
-            },
+            }
             RoutingEvent::MemberLeft { name, age } => {
                 trace!("A node has left the section. Node: {:?}", name);
                 // //self.log_node_counts().await;
@@ -353,7 +369,7 @@ impl Node {
                 if self.is_forming_genesis().await {
                     // during formation of genesis we do not process this event
                     debug!("Forming genesis so ignore new member");
-                    return Ok(())
+                    return Ok(());
                 }
 
                 info!("New member has joined the section");
@@ -378,7 +394,7 @@ impl Node {
             RoutingEvent::ClientMessageReceived { msg, user } => {
                 info!("Received client message: {:8?}\n Sent from {:?}", msg, user);
                 Ok(())
-                
+
                 // self.analysis.evaluate(
                 //     *msg,
                 //     SrcLocation::EndUser(user),
@@ -392,7 +408,7 @@ impl Node {
                     src,
                     dst
                 );
-                handle_msg(Message::from(content)?, src ,dst)?;
+                handle_msg(Message::from(content)?, src, dst)?;
                 // self.analysis.evaluate(Message::from(content)?, src, dst)
 
                 Ok(())
@@ -405,12 +421,12 @@ impl Node {
                 sibling_key,
             } => {
                 trace!("******Elders changed event!");
-                // let mut duties: NetworkDuties = 
+                // let mut duties: NetworkDuties =
                 match self_status_change {
                     NodeElderChange::None => {
                         // do nothing
                         Ok(())
-                    },
+                    }
                     NodeElderChange::Promoted => {
                         if self.is_forming_genesis().await {
                             // Ok(NetworkDuties::from(NodeDuty::BeginFormingGenesisSection))
@@ -418,30 +434,30 @@ impl Node {
                             // Ok(())
                         } else {
                             // After genesis section formation, any new Elder will be informed
-                            // by its peers of data required. 
+                            // by its peers of data required.
                             // It may also request this if missing.
                             // For now we start with defaults
                             debug!("TODO: FINISH ELDER MAKING");
 
                             // Ok(NetworkDuties::from(NodeDuty::CompleteTransitionToElder{
-                                //     node_rewards: Default::default(),
-                                //     section_wallet: WalletInfo { 
-                                    //         replicas:  network_api.public_key_set().await?,
-                                    //         history: ActorHistory{
-                                        //             credits: vec![],
-                                        //             debits: vec![]
-                                        //         }
-                                        //     },
-                                        //     user_wallets: Default::default()
-                                        // }))
-                                        Ok(())
+                            //     node_rewards: Default::default(),
+                            //     section_wallet: WalletInfo {
+                            //         replicas:  network_api.public_key_set().await?,
+                            //         history: ActorHistory{
+                            //             credits: vec![],
+                            //             debits: vec![]
+                            //         }
+                            //     },
+                            //     user_wallets: Default::default()
+                            // }))
+                            Ok(())
                         }
                     }
                     NodeElderChange::Demoted => {
                         //TODO: Demotion
                         // NetworkDuties::from(NodeDuty::AssumeAdultDuties)
                         Ok(())
-                    },
+                    }
                 }?;
 
                 let mut sibling_pk = None;
@@ -449,8 +465,6 @@ impl Node {
                     sibling_pk = Some(PublicKey::Bls(pk));
                 }
                 // TODO: Update elder info.
-
-
 
                 // duties.push(NetworkDuty::from(NodeDuty::UpdateElderInfo {
                 //     prefix,
@@ -465,13 +479,13 @@ impl Node {
             }
             RoutingEvent::Relocated { .. } => {
                 // Check our current status
-                let age = network_api.age().await;
+                let age = self.network_api.age().await;
                 if age > MIN_AGE {
                     info!("Node promoted to Adult");
                     info!("Our Age: {:?}", age);
                     // return Ok(())
                     // Ok(NetworkDuties::from(NodeDuty::AssumeAdultDuties))
-                } 
+                }
                 Ok(())
                 // else {
                 //     info!("Our AGE: {:?}", age);
@@ -507,7 +521,10 @@ impl Node {
 
     fn handle_error(&self, err: &Error) {
         use std::error::Error;
-        info!("unimplemented: Handle errors. This should be return w/ lazyError to sender. {}", err);
+        info!(
+            "unimplemented: Handle errors. This should be return w/ lazyError to sender. {}",
+            err
+        );
 
         if let Some(source) = err.source() {
             error!("Source of error: {:?}", source);
@@ -518,9 +535,8 @@ impl Node {
     pub async fn sign_as_elder<T: Serialize>(&self, data: &T) -> Result<SignatureShare> {
         let share = self
             .node_signing
-            .sign_as_elder(data, 
-                &self.network_api.public_key_set().await?
-                .public_key()).await?;
+            .sign_as_elder(data, &self.network_api.public_key_set().await?.public_key())
+            .await?;
         Ok(SignatureShare {
             share,
             index: self.network_api.our_index().await?,
@@ -537,8 +553,6 @@ impl Node {
             && section_chain_len <= GENESIS_ELDER_COUNT
     }
 }
-
-
 
 impl Display for Node {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {

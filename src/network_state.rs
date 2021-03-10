@@ -75,7 +75,7 @@ pub struct AdultState {
     node_id: Ed25519PublicKey,
     section_chain: SectionChain,
     elders: Vec<(XorName, SocketAddr)>,
-    adult_reader: AdultReader,
+    // adult_reader: AdultReader,
     node_signing: NodeSigning,
 }
 
@@ -90,7 +90,7 @@ impl AdultState {
             node_id: network.public_key().await,
             section_chain: network.section_chain().await,
             elders: network.our_elder_addresses().await,
-            adult_reader: AdultReader::new(network.clone()),
+            // adult_reader: AdultReader::new(network.clone()),
             node_signing: NodeSigning::new(network),
         })
     }
@@ -132,159 +132,159 @@ pub struct ElderState {
     sibling_public_key: Option<PublicKey>,
     section_chain: SectionChain,
     elders: Vec<(XorName, SocketAddr)>,
-    adult_reader: AdultReader,
+    // adult_reader: AdultReader,
     interaction: NodeInteraction,
     node_signing: NodeSigning,
 }
 
-impl ElderState {
-    /// Takes a snapshot of current state
-    /// https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+is%3Aopen+eval_order_dependence
-    #[allow(clippy::eval_order_dependence)]
-    pub async fn new(network: Network) -> Result<Self> {
-        debug!(
-            ">> setting up elderstate, PK from routing is: {:?}",
-            PublicKey::Bls(network.public_key_set().await?.public_key())
-        );
+// impl ElderState {
+//     /// Takes a snapshot of current state
+//     /// https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+is%3Aopen+eval_order_dependence
+//     #[allow(clippy::eval_order_dependence)]
+//     pub async fn new(network: Network) -> Result<Self> {
+//         debug!(
+//             ">> setting up elderstate, PK from routing is: {:?}",
+//             PublicKey::Bls(network.public_key_set().await?.public_key())
+//         );
 
-        Ok(Self {
-            prefix: network.our_prefix().await,
-            node_name: network.our_name().await,
-            node_id: network.public_key().await,
-            key_index: network.our_index().await?,
-            public_key_set: network.public_key_set().await?,
-            sibling_public_key: network.sibling_public_key().await,
-            section_chain: network.section_chain().await,
-            elders: network.our_elder_addresses().await,
-            adult_reader: AdultReader::new(network.clone()),
-            interaction: NodeInteraction::new(network.clone()),
-            node_signing: NodeSigning::new(network),
-        })
-    }
+//         Ok(Self {
+//             prefix: network.our_prefix().await,
+//             node_name: network.our_name().await,
+//             node_id: network.public_key().await,
+//             key_index: network.our_index().await?,
+//             public_key_set: network.public_key_set().await?,
+//             sibling_public_key: network.sibling_public_key().await,
+//             section_chain: network.section_chain().await,
+//             elders: network.our_elder_addresses().await,
+//             // adult_reader: AdultReader::new(network.clone()),
+//             interaction: NodeInteraction::new(network.clone()),
+//             node_signing: NodeSigning::new(network),
+//         })
+//     }
 
-    ///
-    pub async fn set_joins_allowed(&mut self, joins_allowed: bool) -> Result<()> {
-        self.interaction.set_joins_allowed(joins_allowed).await
-    }
+//     ///
+//     pub async fn set_joins_allowed(&mut self, joins_allowed: bool) -> Result<()> {
+//         self.interaction.set_joins_allowed(joins_allowed).await
+//     }
 
-    // ---------------------------------------------------
-    // ----------------- DYNAMIC STATE -------------------
-    // ---------------------------------------------------
+// ---------------------------------------------------
+// ----------------- DYNAMIC STATE -------------------
+// ---------------------------------------------------
 
-    /// Dynamic state
-    pub async fn adults(&self) -> Vec<XorName> {
-        self.adult_reader.our_adults().await
-    }
+// /// Dynamic state
+// pub async fn adults(&self) -> Vec<XorName> {
+//     self.adult_reader.our_adults().await
+// }
 
-    /// Dynamic state
-    pub async fn adults_sorted_by_distance_to(&self, name: &XorName, count: usize) -> Vec<XorName> {
-        self.adult_reader
-            .our_adults_sorted_by_distance_to(name, count)
-            .await
-    }
+// /// Dynamic state
+// pub async fn adults_sorted_by_distance_to(&self, name: &XorName, count: usize) -> Vec<XorName> {
+//     self.adult_reader
+//         .our_adults_sorted_by_distance_to(name, count)
+//         .await
+// }
 
-    // ---------------------------------------------------
-    // ----------------- STATIC STATE --------------------
-    // ---------------------------------------------------
+// ---------------------------------------------------
+// ----------------- STATIC STATE --------------------
+// ---------------------------------------------------
 
-    /// Static state
-    pub fn prefix(&self) -> &Prefix {
-        &self.prefix
-    }
+//     /// Static state
+//     pub fn prefix(&self) -> &Prefix {
+//         &self.prefix
+//     }
 
-    /// Static state
-    pub fn node_name(&self) -> XorName {
-        self.node_name
-    }
+//     /// Static state
+//     pub fn node_name(&self) -> XorName {
+//         self.node_name
+//     }
 
-    /// Static state
-    pub fn node_id(&self) -> Ed25519PublicKey {
-        self.node_id
-    }
+//     /// Static state
+//     pub fn node_id(&self) -> Ed25519PublicKey {
+//         self.node_id
+//     }
 
-    /// Static state
-    pub fn key_index(&self) -> usize {
-        self.key_index
-    }
+//     /// Static state
+//     pub fn key_index(&self) -> usize {
+//         self.key_index
+//     }
 
-    /// Static state
-    pub fn section_public_key(&self) -> PublicKey {
-        PublicKey::Bls(self.public_key_set().public_key())
-    }
+//     /// Static state
+//     pub fn section_public_key(&self) -> PublicKey {
+//         PublicKey::Bls(self.public_key_set().public_key())
+//     }
 
-    /// Static state
-    pub fn sibling_public_key(&self) -> Option<PublicKey> {
-        self.sibling_public_key
-    }
+//     /// Static state
+//     pub fn sibling_public_key(&self) -> Option<PublicKey> {
+//         self.sibling_public_key
+//     }
 
-    /// Static state
-    pub fn public_key_set(&self) -> &PublicKeySet {
-        &self.public_key_set
-    }
+//     /// Static state
+//     pub fn public_key_set(&self) -> &PublicKeySet {
+//         &self.public_key_set
+//     }
 
-    /// Static state
-    pub fn public_key_share(&self) -> PublicKeyShare {
-        self.public_key_set.public_key_share(self.key_index)
-    }
+//     /// Static state
+//     pub fn public_key_share(&self) -> PublicKeyShare {
+//         self.public_key_set.public_key_share(self.key_index)
+//     }
 
-    /// Static state
-    pub fn section_chain(&self) -> &SectionChain {
-        &self.section_chain
-    }
+//     /// Static state
+//     pub fn section_chain(&self) -> &SectionChain {
+//         &self.section_chain
+//     }
 
-    /// Static state
-    pub fn elder_names(&self) -> BTreeSet<&XorName> {
-        self.elders.iter().map(|(name, _)| name).collect()
-    }
+//     /// Static state
+//     pub fn elder_names(&self) -> BTreeSet<&XorName> {
+//         self.elders.iter().map(|(name, _)| name).collect()
+//     }
 
-    /// Static state
-    pub fn elders(&self) -> &Vec<(XorName, SocketAddr)> {
-        &self.elders
-    }
+//     /// Static state
+//     pub fn elders(&self) -> &Vec<(XorName, SocketAddr)> {
+//         &self.elders
+//     }
 
-    /// Static state
-    pub fn elders_sorted_by_distance_to(&self, name: &XorName) -> Vec<&(XorName, SocketAddr)> {
-        self.elders
-            .iter()
-            .sorted_by(|(lhs, _), (rhs, _)| name.cmp_distance(lhs, rhs))
-            .collect()
-    }
+//     /// Static state
+//     pub fn elders_sorted_by_distance_to(&self, name: &XorName) -> Vec<&(XorName, SocketAddr)> {
+//         self.elders
+//             .iter()
+//             .sorted_by(|(lhs, _), (rhs, _)| name.cmp_distance(lhs, rhs))
+//             .collect()
+//     }
 
-    /// Creates a detached BLS signature share of `data` if the `self` holds a BLS keypair share.
-    pub async fn sign_as_elder<T: Serialize>(&self, data: &T) -> Result<SignatureShare> {
-        let share = self
-            .node_signing
-            .sign_as_elder(data, &self.public_key_set().public_key())
-            .await?;
-        Ok(SignatureShare {
-            share,
-            index: self.key_index,
-        })
-    }
+//     /// Creates a detached BLS signature share of `data` if the `self` holds a BLS keypair share.
+//     pub async fn sign_as_elder<T: Serialize>(&self, data: &T) -> Result<SignatureShare> {
+//         let share = self
+//             .node_signing
+//             .sign_as_elder(data, &self.public_key_set().public_key())
+//             .await?;
+//         Ok(SignatureShare {
+//             share,
+//             index: self.key_index,
+//         })
+//     }
 
-    /// "Sort of" static; this is calling into routing layer
-    /// but the underlying keys will not change.
-    pub async fn sign_as_node<T: Serialize>(&self, data: &T) -> Result<Signature> {
-        self.node_signing.sign_as_node(&data).await
-    }
+//     /// "Sort of" static; this is calling into routing layer
+//     /// but the underlying keys will not change.
+//     pub async fn sign_as_node<T: Serialize>(&self, data: &T) -> Result<Signature> {
+//         self.node_signing.sign_as_node(&data).await
+//     }
 
-    // ------ DEPRECATE? -------------
+//     // ------ DEPRECATE? -------------
 
-    /// Static state
-    pub fn elder_key(&self) -> TransientElderKey {
-        TransientElderKey {
-            node_id: self.node_id,
-            bls_key: self.public_key_share(),
-            bls_share_index: self.key_index(),
-            bls_public_key_set: self.public_key_set().clone(),
-        }
-    }
-}
+//     /// Static state
+//     pub fn elder_key(&self) -> TransientElderKey {
+//         TransientElderKey {
+//             node_id: self.node_id,
+//             bls_key: self.public_key_share(),
+//             bls_share_index: self.key_index(),
+//             bls_public_key_set: self.public_key_set().clone(),
+//         }
+//     }
+// }
 
-#[derive(Clone)]
-pub struct AdultReader {
-    network: Network,
-}
+// #[derive(Clone)]
+// pub struct AdultReader {
+//     network: Network,
+// }
 
 // impl AdultReader {
 //     /// Access to the current state of our adult constellation

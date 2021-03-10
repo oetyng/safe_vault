@@ -19,6 +19,7 @@ use sn_routing::XorName;
 
 /// Sending of messages
 /// to nodes and clients in the network.
+#[derive(Clone)]
 pub struct Messaging {
     network: Network,
 }
@@ -28,25 +29,22 @@ impl Messaging {
         Self { network }
     }
 
-    pub async fn process_messaging_duty(
-        &mut self,
-        duty: NodeMessagingDuty,
-    ) -> Result<()> {
+    pub async fn process_messaging_duty(&self, duty: NodeMessagingDuty) -> Result<()> {
         use NodeMessagingDuty::*;
         match duty {
             Send(msg) => {
                 self.send(msg).await?;
                 Ok(())
-            },
+            }
             SendToAdults { targets, msg } => {
                 self.send_to_nodes(targets, &msg).await?;
                 Ok(())
-            },
+            }
             NoOp => Ok(()),
         }
     }
 
-    async fn send(&mut self, msg: OutgoingMsg) -> Result<()> {
+    async fn send(&self, msg: OutgoingMsg) -> Result<()> {
         let src = if msg.section_source {
             SrcLocation::Section(self.network.our_prefix().await.name())
         } else {
@@ -57,7 +55,11 @@ impl Messaging {
             dst: msg.dst,
             aggregation: msg.aggregation,
         };
-        let result = self.network.send_message(itry, msg.msg.serialize()?).await;
+        let result = self
+            .network
+            .clone()
+            .send_message(itry, msg.msg.serialize()?)
+            .await;
 
         result.map_or_else(
             |err| {
@@ -68,15 +70,12 @@ impl Messaging {
         )
     }
 
-    async fn send_to_nodes(
-        &mut self,
-        targets: BTreeSet<XorName>,
-        msg: &Message,
-    ) -> Result<()> {
+    async fn send_to_nodes(&self, targets: BTreeSet<XorName>, msg: &Message) -> Result<()> {
         let name = self.network.our_name().await;
         let bytes = &msg.serialize()?;
         for target in targets {
             self.network
+                .clone()
                 .send_message(
                     Itinerary {
                         src: SrcLocation::Node(name),

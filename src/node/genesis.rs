@@ -8,7 +8,9 @@
 
 use crate::{ElderState, Error, Result};
 use log::info;
-use sn_data_types::{Credit, CreditAgreementProof, ReplicaPublicKeySet, SignatureShare, SignedCredit};
+use sn_data_types::{
+    Credit, CreditAgreementProof, ReplicaPublicKeySet, SignatureShare, SignedCredit,
+};
 use std::collections::BTreeMap;
 
 pub(crate) struct GenesisProposal {
@@ -34,7 +36,7 @@ pub(crate) struct GenesisAccumulation {
 }
 
 impl GenesisProposal {
-    pub(crate) fn add(&mut self, sig: SignatureShare,  pk_set: ReplicaPublicKeySet) -> Result<()> {
+    pub(crate) fn add(&mut self, sig: SignatureShare, pk_set: ReplicaPublicKeySet) -> Result<()> {
         let _ = self.signatures.insert(sig.index, sig.share);
         let min_count = 1 + pk_set.threshold();
         if self.signatures.len() >= min_count {
