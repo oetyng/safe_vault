@@ -12,17 +12,18 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     Error, Result,
 };
+use bls::PublicKey as BlsPublicKey;
 use log::{debug, info, warn};
 use sn_data_types::{
     Credit, PublicKey, SectionElders, Signature, SignatureShare, SignedCredit, Signing, Token,
     TransferPropagated,
 };
 use sn_messaging::{
-    client::{Message, NodeCmd, NodeQuery, NodeSystemCmd, NodeSystemQuery},
+    client::{NodeCmd, NodeQuery, NodeSystemCmd, NodeSystemQuery, ProcessMsg},
     Aggregation, DstLocation, MessageId,
 };
-use sn_routing::Elders;
-use xor_name::XorName;
+use sn_routing::EldersInfo;
+use xor_name::{Prefix, XorName};
 
 use super::{
     elder_signing::ElderSigning,
@@ -43,32 +44,47 @@ pub struct ChurnProcess {
 #[derive(Clone, Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum Churn {
-    /// Contains next section Elders/Wallet.
-    Regular(Elders),
-    /// Contains the new children Elders/Wallets.
+    /// Contains next section EldersInfo/Wallet.
+    Regular {
+        our_prefix: Prefix,
+
+        our_key: PublicKey,
+    },
+    /// Contains the new children EldersInfo/Wallets.
     Split {
+        our_prefix: Prefix,
         ///
-        our_elders: Elders,
-        ///
-        sibling_elders: Elders,
+        our_key: PublicKey,
+        /// Neighbouring section Pk
+        sibling_key: PublicKey,
     },
 }
 
 impl Churn {
     pub fn wallet_key(&self) -> PublicKey {
         match self {
-            Self::Regular(our_elders) | Self::Split { our_elders, .. } => our_elders.key(),
+            Self::Regular { our_key, .. } => our_key.clone(),
+            Self::Split { our_key, .. } => our_key.clone(),
         }
     }
 
-    pub fn wallet_name(&self) -> XorName {
-        self.wallet_key().into()
-    }
+    // pub fn our_elders(&self) -> &EldersInfo {
+    //     match self {
+    //         Self::Regular{ our_elders,..} | Self::Split { our_elders, .. } => our_elders,
+    //     }
+    // }
 
-    pub fn our_elders(&self) -> &Elders {
+    /// Our elder's prefix name
+    pub fn our_elders_address(&self) -> XorName {
         match self {
-            Self::Regular(our_elders) | Self::Split { our_elders, .. } => our_elders,
+            Self::Regular { our_prefix, .. } => our_prefix.name(),
+            Self::Split { our_prefix, .. } => our_prefix.name(),
         }
+    }
+
+    /// Our elders wallet key name. (XorName derived from PK)
+    pub fn our_elders_name(&self) -> XorName {
+        XorName::from(self.wallet_key())
     }
 }
 
@@ -82,10 +98,6 @@ impl ChurnProcess {
         }
     }
 
-    pub fn our_elders(&self) -> &Elders {
-        self.churn.our_elders()
-    }
-
     pub fn stage(&self) -> &WalletStage {
         &self.stage
     }
@@ -93,10 +105,11 @@ impl ChurnProcess {
     /// Move Wallet
     pub async fn move_wallet(&mut self) -> Result<NodeDuty> {
         match self.churn.clone() {
-            Churn::Regular(_next) => self.propose_wallet_creation(self.balance).await,
+            Churn::Regular { .. } => self.propose_wallet_creation(self.balance).await,
             Churn::Split {
-                our_elders,
-                sibling_elders,
+                our_prefix,
+                our_key,
+                sibling_key,
             } => {
                 // Split the tokens of current actor.
                 let half_balance = self.balance.as_nano() / 2;
@@ -108,7 +121,7 @@ impl ChurnProcess {
 
                 // Determine which transfer is first
                 // (deterministic order is important for reaching consensus)
-                if our_elders.key() > sibling_elders.key() {
+                if our_key > sibling_key {
                     self.propose_wallet_creation(t1_amount).await
                 } else {
                     self.propose_wallet_creation(t2_amount).await
@@ -119,15 +132,17 @@ impl ChurnProcess {
 
     /// Generates msgs for creation of new section wallet.
     async fn propose_wallet_creation(&mut self, amount: Token) -> Result<NodeDuty> {
-        let our_elders = self.churn.our_elders();
-        let id = MessageId::combine(vec![our_elders.address(), our_elders.name()])
-            .0
-             .0;
+        let id = MessageId::combine(vec![
+            self.churn.our_elders_address(),
+            self.churn.our_elders_name(),
+        ])
+        .0
+         .0;
 
         let credit = Credit {
             id,
             amount,
-            recipient: our_elders.key(),
+            recipient: self.churn.wallet_key(),
             msg: "New section wallet".to_string(),
         };
 
@@ -151,7 +166,7 @@ impl ChurnProcess {
         Ok(send_prop_msg(
             credit.clone(),
             share,
-            self.churn.our_elders().address(),
+            self.churn.our_elders_address(),
         ))
     }
 
@@ -191,7 +206,7 @@ impl ChurnProcess {
                 Ok(send_prop_msg(
                     credit.clone(),
                     share,
-                    self.churn.our_elders().address(),
+                    self.churn.our_elders_address(),
                 ))
             }
             WalletStage::ProposingWallet(mut bootstrap) => {
@@ -223,7 +238,7 @@ impl ChurnProcess {
                     Ok(send_acc_msg(
                         signed_credit.clone(),
                         share,
-                        self.churn.our_elders().address(),
+                        self.churn.our_elders_address(),
                     ))
                 } else {
                     self.stage = WalletStage::ProposingWallet(bootstrap);
@@ -273,7 +288,7 @@ impl ChurnProcess {
                 Ok(send_acc_msg(
                     signed_credit,
                     share,
-                    self.churn.our_elders().address(),
+                    self.churn.our_elders_address(),
                 ))
             }
             WalletStage::ProposingWallet(bootstrap) => {
@@ -300,7 +315,7 @@ impl ChurnProcess {
                 Ok(send_acc_msg(
                     signed_credit,
                     share,
-                    self.churn.our_elders().address(),
+                    self.churn.our_elders_address(),
                 ))
             }
             WalletStage::AccumulatingWallet(mut bootstrap) => {
@@ -324,10 +339,9 @@ impl ChurnProcess {
 
 fn send_prop_msg(credit: Credit, sig: SignatureShare, our_elders: XorName) -> NodeDuty {
     NodeDuty::Send(OutgoingMsg {
-        msg: Message::NodeCmd {
+        msg: ProcessMsg::NodeCmd {
             cmd: NodeCmd::System(NodeSystemCmd::ProposeNewWallet { credit, sig }),
             id: MessageId::new(),
-            target_section_pk: None,
         },
         section_source: false,                 // sent as single node
         dst: DstLocation::Section(our_elders), // send this msg to our elders!
@@ -337,10 +351,9 @@ fn send_prop_msg(credit: Credit, sig: SignatureShare, our_elders: XorName) -> No
 
 fn send_acc_msg(signed_credit: SignedCredit, sig: SignatureShare, our_elders: XorName) -> NodeDuty {
     NodeDuty::Send(OutgoingMsg {
-        msg: Message::NodeCmd {
+        msg: ProcessMsg::NodeCmd {
             cmd: NodeCmd::System(NodeSystemCmd::AccumulateNewWallet { signed_credit, sig }),
             id: MessageId::new(),
-            target_section_pk: None,
         },
         section_source: false,                 // sent as single node
         dst: DstLocation::Section(our_elders), // send this msg to our elders!

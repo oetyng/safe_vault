@@ -17,7 +17,7 @@ use bls::{PublicKeySet, PublicKeyShare as BlsPublicKeyShare};
 use log::{debug, error};
 use serde::Serialize;
 use sn_data_types::{Error as DtError, PublicKey, Result as DtResult, Signature, SignatureShare};
-use sn_messaging::{client::Message, Aggregation, DstLocation, Itinerary, SrcLocation};
+use sn_messaging::{client::ProcessMsg, Aggregation, DstLocation, Itinerary, SrcLocation};
 use sn_routing::{
     Config as RoutingConfig, Error as RoutingError, EventStream, Routing as RoutingNode,
     SectionChain,
@@ -124,6 +124,18 @@ impl Network {
         self.routing.public_key_set().await.map_err(Error::Routing)
     }
 
+    pub async fn get_section_pk_by_name(&self, name: &XorName) -> Result<PublicKey> {
+        let (pk, elders) = self.routing.match_section(name).await;
+        debug!(">>>>>> section pk found by routing {:?}", pk);
+        debug!(">>>>>> section elders found by routing {:?}", elders);
+        if let Some(pk) = pk {
+            let pk = PublicKey::from(pk);
+            Ok(pk)
+        } else {
+            Err(Error::NoSectionPublicKeyKnown(*name))
+        }
+    }
+
     pub async fn our_name(&self) -> XorName {
         self.routing.name().await
     }
@@ -144,45 +156,45 @@ impl Network {
         self.routing.matches_our_prefix(&XorName(name.0)).await
     }
 
-    pub async fn send_to_nodes(&self, targets: BTreeSet<XorName>, msg: &Message) -> Result<()> {
-        let name = self.our_name().await;
-        let bytes = &msg.serialize()?;
-        for target in targets {
-            self.send_message(
-                Itinerary {
-                    src: SrcLocation::Node(name),
-                    dst: DstLocation::Node(XorName(target.0)),
-                    aggregation: Aggregation::AtDestination,
-                },
-                bytes.clone(),
-            )
-            .await
-            .map_or_else(
-                |err| {
-                    error!("Unable to send Message to Peer: {:?}", err);
-                },
-                |()| {},
-            );
-        }
-        Ok(())
-    }
+    // pub async fn send_to_nodes(&self, targets: BTreeSet<XorName>, msg: &ProcessMsg) -> Result<()> {
+    //     let name = self.our_name().await;
+    //     let bytes = &msg.serialize()?;
+    //     for target in targets {
+    //         self.send_message(
+    //             Itinerary {
+    //                 src: SrcLocation::Node(name),
+    //                 dst: DstLocation::Node(XorName(target.0)),
+    //                 aggregation: Aggregation::AtDestination,
+    //             },
+    //             bytes.clone(),
+    //         )
+    //         .await
+    //         .map_or_else(
+    //             |err| {
+    //                 error!("Unable to send Message to Peer: {:?}", err);
+    //             },
+    //             |()| {},
+    //         );
+    //     }
+    //     Ok(())
+    // }
 
-    pub async fn send(&self, msg: OutgoingMsg) -> Result<()> {
-        let itry = Itinerary {
-            src: SrcLocation::Node(self.our_name().await),
-            dst: msg.dst,
-            aggregation: msg.aggregation,
-        };
-        let result = self.send_message(itry, msg.msg.serialize()?).await;
+    // pub async fn send(&self, msg: OutgoingMsg) -> Result<()> {
+    //     let itry = Itinerary {
+    //         src: SrcLocation::Node(self.our_name().await),
+    //         dst: msg.dst,
+    //         aggregation: msg.aggregation,
+    //     };
+    //     let result = self.send_message(itry, msg.msg.serialize()?).await;
 
-        result.map_or_else(
-            |err| {
-                error!("Unable to send msg: {:?}", err);
-                Err(Error::Logic(format!("Unable to send msg: {:?}", msg.id())))
-            },
-            |()| Ok(()),
-        )
-    }
+    //     result.map_or_else(
+    //         |err| {
+    //             error!("Unable to send msg: {:?}", err);
+    //             Err(Error::Logic(format!("Unable to send msg: {:?}", msg.id())))
+    //         },
+    //         |()| Ok(()),
+    //     )
+    // }
 
     pub async fn send_message(
         &self,
@@ -216,6 +228,11 @@ impl Network {
     pub async fn our_index(&self) -> Result<usize> {
         self.routing.our_index().await.map_err(Error::Routing)
     }
+
+    // /// BLS key index in routing for key shares
+    // pub async fn get_section_elders(&self, name: &XorName) -> Result<usize> {
+    //     self.routing.get
+    // }
 
     pub async fn our_elder_names(&self) -> BTreeSet<XorName> {
         self.routing

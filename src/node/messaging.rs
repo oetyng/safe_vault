@@ -9,7 +9,9 @@
 use crate::{node_ops::OutgoingMsg, Error};
 use crate::{Network, Result};
 use log::{error, trace};
-use sn_messaging::{client::Message, Aggregation, DstLocation, Itinerary, SrcLocation};
+use sn_messaging::{
+    client::Message, client::ProcessMsg, Aggregation, DstLocation, Itinerary, SrcLocation,
+};
 use sn_routing::XorName;
 use std::collections::BTreeSet;
 
@@ -25,12 +27,25 @@ pub(crate) async fn send(msg: OutgoingMsg, network: &Network) -> Result<()> {
         dst: msg.dst,
         aggregation: msg.aggregation,
     };
-    let result = network.send_message(itinerary, msg.msg.serialize()?).await;
+
+    let msg_id = msg.id();
+
+    let dst_name = msg.dst.name().ok_or(Error::NoDestinationName)?;
+    let target_section_pk = network.get_section_pk_by_name(&dst_name).await?;
+
+    let target_section_pk = target_section_pk
+        .bls()
+        .ok_or(Error::NoSectionPublicKeyKnown(dst_name))?;
+
+    let message = Message::Process(msg.msg);
+    let result = network
+        .send_message(itinerary, message.serialize(dst_name, target_section_pk)?)
+        .await;
 
     result.map_or_else(
         |err| {
             error!("Unable to send msg: {:?}", err);
-            Err(Error::Logic(format!("Unable to send msg: {:?}", msg.id())))
+            Err(Error::Logic(format!("Unable to send msg: {:?}", msg_id)))
         },
         |()| Ok(()),
     )
@@ -38,14 +53,22 @@ pub(crate) async fn send(msg: OutgoingMsg, network: &Network) -> Result<()> {
 
 pub(crate) async fn send_to_nodes(
     targets: BTreeSet<XorName>,
-    msg: &Message,
+    msg: &ProcessMsg,
     network: &Network,
 ) -> Result<()> {
     trace!("Sending msg to nodes: {:?}: {:?}", targets, msg);
 
     let name = network.our_name().await;
-    let bytes = &msg.serialize()?;
+    let message = Message::Process(msg.clone());
+
     for target in targets {
+        let target_section_pk = network
+            .get_section_pk_by_name(&target)
+            .await?
+            .bls()
+            .ok_or(Error::NoSectionPublicKeyKnown(target))?;
+        let bytes = &message.serialize(target, target_section_pk)?;
+
         network
             .send_message(
                 Itinerary {
