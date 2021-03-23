@@ -18,7 +18,7 @@ use sn_data_types::{
     PublicKey, Result as NdResult,
 };
 use sn_messaging::{
-    client::{CmdError, MapDataExchange, MapRead, MapWrite, Message, QueryResponse},
+    client::{CmdError, MapDataExchange, MapRead, MapWrite, ProcessMsg, QueryResponse},
     Aggregation, DstLocation, EndUser, MessageId,
 };
 use std::collections::BTreeMap;
@@ -243,11 +243,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetMap(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -271,11 +270,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetMapShell(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -299,11 +297,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetMapVersion(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -337,11 +334,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetMapValue(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -365,11 +361,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::ListMapKeys(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -394,11 +389,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::ListMapValues(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -423,11 +417,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::ListMapEntries(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -451,11 +444,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::ListMapPermissions(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -483,11 +475,10 @@ impl MapStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::ListMapUserPermissions(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -506,11 +497,10 @@ impl MapStorage {
             info!("MapStorage: Writing chunk FAILED!");
 
             Ok(NodeDuty::Send(OutgoingMsg {
-                msg: Message::CmdError {
+                msg: ProcessMsg::CmdError {
                     error: CmdError::Data(messaging_error),
                     id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
-                    target_section_pk: None,
                 },
                 section_source: false, // strictly this is not correct, but we don't expect responses to a response..
                 dst: DstLocation::EndUser(origin),

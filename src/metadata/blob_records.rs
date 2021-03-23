@@ -19,7 +19,7 @@ use sn_messaging::{
     client::{
         BlobDataExchange, BlobRead, BlobWrite, ChunkMetadata, CmdError, Error as ErrorMessage,
         HolderMetadata, Message, NodeCmd, NodeCmdResult, NodeQuery, NodeSystemCmd, NodeSystemQuery,
-        QueryResponse,
+        QueryResponse, ProcessMsg,
     },
     Aggregation, DstLocation, EndUser, MessageId,
 };
@@ -148,11 +148,10 @@ impl BlobRecords {
                 return Ok(NodeDuty::NoOp);
             } else {
                 return Ok(NodeDuty::Send(OutgoingMsg {
-                    msg: Message::CmdError {
+                    msg: ProcessMsg::CmdError {
                         error: CmdError::Data(ErrorMessage::DataExists),
                         id: MessageId::in_response_to(&msg_id),
                         correlation_id: msg_id,
-                        target_section_pk: None,
                     },
                     section_source: false, // strictly this is not correct, but we don't expect responses to an error..
                     dst: DstLocation::EndUser(origin),
@@ -177,7 +176,7 @@ impl BlobRecords {
         {
             Ok(NodeDuty::SendToNodes {
                 targets: target_holders,
-                msg: Message::NodeCmd {
+                msg: ProcessMsg::NodeCmd {
                     cmd: NodeCmd::Chunks {
                         cmd: blob_write,
                         origin,
@@ -243,11 +242,10 @@ impl BlobRecords {
             if let QueryResponse::GetBlob(result) = &response {
                 if result.is_ok() {
                     return Ok(NodeDuty::Send(OutgoingMsg {
-                        msg: Message::QueryResponse {
+                        msg: ProcessMsg::QueryResponse {
                             response,
                             id: MessageId::in_response_to(&msg_id),
                             correlation_id: msg_id,
-                            target_section_pk: None,
                         },
                         dst: DstLocation::EndUser(end_user),
                         section_source: false,
@@ -275,11 +273,10 @@ impl BlobRecords {
     ) -> Result<NodeDuty> {
         let message_error = convert_to_error_message(error)?;
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::CmdError {
+            msg: ProcessMsg::CmdError {
                 error: CmdError::Data(message_error),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to an error..
             dst: DstLocation::EndUser(origin),
@@ -324,13 +321,12 @@ impl BlobRecords {
             origin,
             metadata.holders.clone(),
         ) {
-            let msg = Message::NodeCmd {
+            let msg = ProcessMsg::NodeCmd {
                 cmd: NodeCmd::Chunks {
                     cmd: BlobWrite::DeletePrivate(address),
                     origin,
                 },
                 id: msg_id,
-                target_section_pk: None,
             };
             Ok(NodeDuty::SendToNodes {
                 msg,
@@ -510,10 +506,9 @@ impl BlobRecords {
 
         Ok(NodeDuty::SendToNodes {
             targets: target_holders,
-            msg: Message::NodeCmd {
+            msg: ProcessMsg::NodeCmd {
                 cmd: NodeCmd::System(NodeSystemCmd::ReplicateChunk(data)),
                 id: msg_id,
-                target_section_pk: None,
             },
             aggregation: Aggregation::AtDestination,
         })
@@ -530,7 +525,7 @@ impl BlobRecords {
             .map(|holder| {
                 info!("Sending get-chunk query to holder {:?}", holder);
                 (
-                    Message::NodeQuery {
+                    ProcessMsg::NodeQuery {
                         query: NodeQuery::System(NodeSystemQuery::GetChunk(address)),
                         id: MessageId::combine(vec![*address.name(), holder]),
                         target_section_pk: None,
@@ -570,11 +565,10 @@ impl BlobRecords {
     ) -> Result<NodeDuty> {
         let query_error = |error: Error| async {
             let message_error = convert_to_error_message(error)?;
-            let err_msg = Message::QueryResponse {
+            let err_msg = ProcessMsg::QueryResponse {
                 response: QueryResponse::GetBlob(Err(message_error)),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             };
             Ok(NodeDuty::Send(OutgoingMsg {
                 msg: err_msg,
@@ -598,7 +592,7 @@ impl BlobRecords {
             .adult_ops
             .new_read(msg_id, address, origin, metadata.holders.clone())
         {
-            let msg = Message::NodeQuery {
+            let msg = ProcessMsg::NodeQuery {
                 query: NodeQuery::Chunks {
                     query: BlobRead::Get(address),
                     origin,

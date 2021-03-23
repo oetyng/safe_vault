@@ -27,8 +27,8 @@ use crate::{
 use bls::SecretKey;
 use log::{error, info};
 use sn_data_types::PublicKey;
-use sn_routing::EventStream;
-use sn_routing::{Prefix, XorName};
+use sn_messaging::client::ProcessMsg;
+use sn_routing::{EventStream, Prefix, XorName};
 use std::path::{Path, PathBuf};
 use std::{
     fmt::{self, Display, Formatter},

@@ -18,7 +18,7 @@ use sn_data_types::{
     SequenceOp, SequenceUser,
 };
 use sn_messaging::{
-    client::{CmdError, Message, QueryResponse, SequenceDataExchange, SequenceRead, SequenceWrite},
+    client::{CmdError, ProcessMsg, QueryResponse, SequenceDataExchange, SequenceRead, SequenceWrite},
     Aggregation, DstLocation, EndUser, MessageId,
 };
 
@@ -124,11 +124,10 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetSequence(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -196,11 +195,10 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetSequenceRange(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -224,11 +222,10 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetSequenceLastEntry(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -254,11 +251,10 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetSequenceUserPermissions(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -287,11 +283,10 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetSequencePublicPolicy(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -320,11 +315,10 @@ impl SequenceStorage {
             Err(error) => Err(convert_to_error_message(error)?),
         };
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::QueryResponse {
+            msg: ProcessMsg::QueryResponse {
                 response: QueryResponse::GetSequencePrivatePolicy(result),
                 id: MessageId::in_response_to(&msg_id),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to a response..
             dst: DstLocation::EndUser(origin),
@@ -390,11 +384,10 @@ impl SequenceStorage {
             }
         };
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::CmdError {
+            msg: ProcessMsg::CmdError {
                 id: MessageId::in_response_to(&msg_id),
                 error: CmdError::Data(error),
                 correlation_id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to an error..
             dst: DstLocation::Section(origin.name()),
