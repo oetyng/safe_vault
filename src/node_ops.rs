@@ -18,7 +18,7 @@ use sn_messaging::{
     client::{BlobRead, BlobWrite, NodeSystemCmd, ProcessMsg},
     Aggregation, DstLocation, EndUser, MessageId, SrcLocation,
 };
-use sn_routing::{EldersInfo, NodeElderChange, Prefix};
+use sn_routing::{NodeElderChange, Prefix};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::{Debug, Formatter},
@@ -186,8 +186,9 @@ pub enum NodeDuty {
         sig: SignatureShare,
     },
     ChurnMembers {
-        /// The Elders of our section.
+        /// Our section prefix.
         our_prefix: Prefix,
+        /// our section public key
         our_key: PublicKey,
         /// The PK of the sibling section, if this event is fired during a split.
         /// Otherwise `None`.

@@ -38,7 +38,7 @@ use sn_messaging::{
     },
     Aggregation, DstLocation, MessageId, SrcLocation,
 };
-use sn_routing::{EldersInfo, XorName};
+use sn_routing::XorName;
 use sn_transfers::TransferActor;
 use xor_name::Prefix;
 
@@ -55,10 +55,6 @@ impl Node {
         self.level_up().await?;
 
         let our_elders_name = our_prefix.name();
-        // let section_key = self
-        //     .network_api
-        //     .get_section_pk_by_name(&our_elders_name)
-        //     .await?;
 
         let churn = if let Some(sibling_key) = &sibling_key {
             Churn::Split {
@@ -129,8 +125,6 @@ impl Node {
             return Err(Error::Logic("No section funds on this node".to_string()));
         };
 
-        // extract some info before moving our_elders..
-        // let sibling_section_key = self.network_api.get_section_pk_by_name(&our_peers).await?;
         let our_peers = our_prefix.name();
 
         let churn = if let Some(sibling_key) = &sibling_key {
@@ -194,10 +188,6 @@ impl Node {
         if let Some(sibling_key) = &sibling_key {
             // push out data to our sibling peers (i.e. our old peers, and new ones that were promoted)
             let our_sibling_peers = our_prefix.sibling().name();
-            // let sibling_key = self
-            //     .network_api
-            //     .get_section_pk_by_name(&our_sibling_peers)
-            //     .await?;
 
             let msg_id = MessageId::combine(vec![our_sibling_peers, XorName::from(*sibling_key)]);
             ops.push(NodeDuty::Send(OutgoingMsg {

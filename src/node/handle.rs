@@ -42,7 +42,6 @@ impl Node {
             NodeDuty::ChurnMembers {
                 our_key,
                 our_prefix,
-                // elders,
                 sibling_key,
                 newbie,
             } => {
