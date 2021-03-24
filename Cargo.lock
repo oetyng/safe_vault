@@ -2414,7 +2414,7 @@ dependencies = [
 [[package]]
 name = "sn_routing"
 version = "0.49.1"
-source = "git+https://github.com/joshuef/sn_routing?branch=YogLz#7b61654000d5eb2bc7d664452d2b2fa40e77ca10"
+source = "git+https://github.com/joshuef/sn_routing?branch=YogLz#b33a639d5d78568f0fcd09dcbdb0b032569a9734"
 dependencies = [
  "bincode",
  "bls_dkg",
