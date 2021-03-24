@@ -167,7 +167,13 @@ impl Node {
             // tokio spawn should only be needed around intensive tasks, ie sign/verify
             match map_routing_event(event, &self.network_api).await {
                 Mapping::Ok { op, ctx } => self.process_while_any(op, ctx).await,
-                Mapping::Error(error) => handle_error(error),
+                Mapping::Error(error) => {
+                    // TODO: do we need both these ways of getting LazyErrs?
+                    let ctx = error.msg;
+                    let error = error.error;
+                    let duty = try_handle_error(error, Some(ctx));
+                    self.process_while_any(duty, None).await;
+                }
             }
         }
 
@@ -206,66 +212,59 @@ fn try_handle_error(err: Error, ctx: Option<MsgContext>) -> NodeDuty {
     use std::error::Error;
     warn!("Error being handled by node: {:?}", err);
     if let Some(source) = err.source() {
-        if let Some(ctx) = ctx {
-            error!("Source of error: {:?}", source);
-            match ctx {
-                // The message that triggered this error
-                MsgContext::Msg { msg, src } => {
-                    error!("Error in response to a message: {:?}", msg);
-                    let dst = get_dst_from_src(src);
+        warn!("Source of error: {:?}", source);
+    }
+    if let Some(ctx) = ctx {
+        match ctx {
+            // The message that triggered this error
+            MsgContext::Msg { msg, src } => {
+                error!("Error in response to a message: {:?}", msg);
+                let dst = get_dst_from_src(src);
 
-                    // TODO: map node error to ProcessingError reasons...
-                    NodeDuty::SendError(OutgoingLazyError {
-                        msg: msg.create_processing_error(None),
-                        dst,
-                    })
-                }
-                // An error decoding a message
-                MsgContext::Bytes { msg, src } => {
-                    warn!("Error decoding msg bytes, sent from {:?}", src);
-                    let dst = get_dst_from_src(src);
-
-                    NodeDuty::SendError(OutgoingLazyError {
-                        msg: ProcessingError {
-                            reason: Some(ProcessingErrorReason::CouldNotDeserialize),
-                            source_message: None,
-                            id: MessageId::new(),
-                        },
-                        dst,
-                    })
-                }
-                // We received an error, and so need to handle that.
-                // Q: Should this be here? Probably should be handled at MsgContext::Error creation
-                // Not sure there's a need to bring it out here...
-                MsgContext::Error { msg, src } => {
-                    error!("%%%% A lazy error to be handled... {:?}", msg);
-                    NodeDuty::NoOp
-                }
+                // TODO: map node error to ProcessingError reasons...
+                NodeDuty::SendError(OutgoingLazyError {
+                    msg: msg.create_processing_error(None),
+                    dst,
+                })
             }
-        } else {
-            error!(
-                "Erroring without a msg context. Source of error: {:?}",
-                source
-            );
-            NodeDuty::NoOp
+            // An error decoding a message
+            MsgContext::Bytes { msg, src } => {
+                warn!("Error decoding msg bytes, sent from {:?}", src);
+                let dst = get_dst_from_src(src);
+
+                NodeDuty::SendError(OutgoingLazyError {
+                    msg: ProcessingError {
+                        reason: Some(ProcessingErrorReason::CouldNotDeserialize),
+                        source_message: None,
+                        id: MessageId::new(),
+                    },
+                    dst,
+                })
+            }
+            // We received an error, and so need to handle that.
+            // Q: Should this be here? Probably should be handled at MsgContext::Error creation
+            // Not sure there's a need to bring it out here...
+            MsgContext::Error { msg, src } => {
+                error!("%%%% A lazy error to be handled... {:?}", msg);
+                NodeDuty::NoOp
+            }
         }
     } else {
-        info!("unimplemented: Handle errors. {:?}", err);
         NodeDuty::NoOp
     }
 }
 
-fn handle_error(err: LazyError) {
-    use std::error::Error;
-    info!(
-        "unimplemented: Handle errors. This should be return w/ lazyError to sender. {:?}",
-        err
-    );
+// fn handle_error(err: LazyError) {
+//     use std::error::Error;
+//     info!(
+//         "unimplemented: Handle errors. This should be return w/ lazyError to sender. {:?}",
+//         err
+//     );
 
-    if let Some(source) = err.error.source() {
-        error!("Source of error: {:?}", source);
-    }
-}
+//     if let Some(source) = err.error.source() {
+//         error!("Source of error: {:?}", source);
+//     }
+// }
 
 impl Display for Node {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
