@@ -140,7 +140,7 @@ impl Node {
             Churn::Split {
                 our_prefix,
                 our_key,
-                sibling_key: sibling_key.clone(),
+                sibling_key: *sibling_key,
             }
         } else {
             Churn::Regular {

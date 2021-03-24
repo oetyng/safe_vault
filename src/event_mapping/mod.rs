@@ -51,7 +51,7 @@ pub enum MsgContext {
 #[derive(Debug)]
 pub struct LazyError {
     pub msg: MsgContext,
-    pub error: crate::Error,
+    pub error: Error,
 }
 
 /// Process any routing event

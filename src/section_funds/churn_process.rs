@@ -62,8 +62,8 @@ pub enum Churn {
 impl Churn {
     pub fn wallet_key(&self) -> PublicKey {
         match self {
-            Self::Regular { our_key, .. } => our_key.clone(),
-            Self::Split { our_key, .. } => our_key.clone(),
+            Self::Regular { our_key, .. } => *our_key,
+            Self::Split { our_key, .. } => *our_key,
         }
     }
 
