@@ -14,7 +14,7 @@ use super::{
     genesis::receive_genesis_proposal,
     genesis_stage::GenesisStage,
     interaction::CompletedWalletChurn,
-    messaging::{send, send_to_nodes},
+    messaging::{send, send_error, send_to_nodes},
 };
 use crate::{
     chunks::Chunks,
@@ -153,9 +153,7 @@ impl Node {
                 Some(SectionFunds::Rewarding(rewards)) => {
                     Ok(vec![rewards.payout_node_reward(wallet, node_id).await?])
                 }
-                None => Err(Error::InvalidOperation(
-                    "No section funds at this node".to_string(),
-                )),
+                None => Err(Error::NoSectionFunds),
             },
             NodeDuty::ReceivePayoutValidation {
                 validation,
@@ -417,6 +415,10 @@ impl Node {
                 send(msg, &self.network_api).await?;
                 Ok(vec![])
             }
+            NodeDuty::SendError(msg) => {
+                send_error(msg, &self.network_api).await?;
+                Ok(vec![])
+            }
             NodeDuty::SendToNodes { targets, msg } => {
                 send_to_nodes(targets, &msg, &self.network_api).await?;
                 Ok(vec![])
@@ -549,9 +551,7 @@ impl Node {
 
     fn get_rewards(&mut self) -> Result<&mut Rewards> {
         if self.section_funds.is_none() {
-            Err(Error::InvalidOperation(
-                "No section funds at this node".to_string(),
-            ))
+            Err(Error::NoSectionFunds)
         } else if let Some(SectionFunds::Rewarding(rewards)) = &mut self.section_funds {
             Ok(rewards)
         } else {
@@ -565,9 +565,7 @@ impl Node {
         if let Some(section_funds) = &mut self.section_funds {
             Ok(section_funds)
         } else {
-            Err(Error::InvalidOperation(
-                "No section funds at this node".to_string(),
-            ))
+            Err(Error::NoSectionFunds)
         }
     }
 
@@ -589,9 +587,7 @@ impl Node {
         {
             Ok((rewards, process, replicas, reward_queue))
         } else {
-            Err(Error::InvalidOperation(
-                "No section funds at this node".to_string(),
-            ))
+            Err(Error::NoSectionFunds)
         }
     }
 }

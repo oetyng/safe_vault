@@ -15,7 +15,7 @@ use sn_data_types::{
     Token, TransferAgreementProof, TransferValidated, WalletHistory,
 };
 use sn_messaging::{
-    client::{BlobRead, BlobWrite, NodeSystemCmd, ProcessMsg},
+    client::{BlobRead, BlobWrite, NodeSystemCmd, ProcessMsg, ProcessingError},
     Aggregation, DstLocation, EndUser, MessageId, SrcLocation,
 };
 use sn_routing::{NodeElderChange, Prefix};
@@ -231,6 +231,9 @@ pub enum NodeDuty {
     SwitchNodeJoin(bool),
     /// Send a message to the specified dst.
     Send(OutgoingMsg),
+    /// Send a lazy error as a result of a specfic message.
+    /// The aim here is for the sender to respond with any missing state
+    SendError(OutgoingLazyError),
     /// Send the same request to each individual node.
     SendToNodes {
         targets: BTreeSet<XorName>,
@@ -327,6 +330,7 @@ impl Debug for NodeDuty {
             Self::IncrementFullNodeCount { .. } => write!(f, "IncrementFullNodeCount"),
             Self::SwitchNodeJoin(_) => write!(f, "SwitchNodeJoin"),
             Self::Send(msg) => write!(f, "Send [ msg: {:?} ]", msg),
+            Self::SendError(msg) => write!(f, "SendError [ msg: {:?} ]", msg),
             Self::SendToNodes { targets, msg } => {
                 write!(f, "SendToNodes [ targets: {:?}, msg: {:?} ]", targets, msg)
             }
@@ -350,8 +354,20 @@ pub struct OutgoingMsg {
     pub aggregation: Aggregation,
 }
 
+#[derive(Debug, Clone)]
+pub struct OutgoingLazyError {
+    pub msg: ProcessingError,
+    pub dst: DstLocation,
+}
+
 impl OutgoingMsg {
     pub fn id(&self) -> MessageId {
         self.msg.id()
+    }
+}
+
+impl OutgoingLazyError {
+    pub fn id(&self) -> MessageId {
+        self.msg.id
     }
 }

@@ -122,7 +122,7 @@ impl Node {
             rewards.stash_payout_in_flight(); // is picked up again after churn
             rewards.clone()
         } else {
-            return Err(Error::Logic("No section funds on this node".to_string()));
+            return Err(Error::NoSectionFunds);
         };
 
         let our_peers = our_prefix.name();

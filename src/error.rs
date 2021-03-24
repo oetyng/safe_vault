@@ -7,7 +7,10 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use sn_data_types::{Error as DtError, PublicKey};
-use sn_messaging::{client::Error as ErrorMessage, MessageId};
+use sn_messaging::{
+    client::{Error as ErrorMessage, Message},
+    MessageId,
+};
 use std::io;
 use thiserror::Error;
 use xor_name::XorName;
@@ -55,6 +58,9 @@ pub enum Error {
     /// Key, Value pair not found in `ChunkStore`.
     #[error("No such chunk")]
     NoSuchChunk,
+    /// This node does not know or manage any section funds
+    #[error("No section funds")]
+    NoSectionFunds,
     /// Creating temp directory failed.
     #[error("Could not create temp store: {0}")]
     TempDirCreationFailed(String),
@@ -124,6 +130,9 @@ pub enum Error {
     /// Logic error.
     #[error("Logic error: {0}")]
     Logic(String),
+    /// Unable to send message
+    #[error("Unable to send message: {0:?}")]
+    UnableToSend(Message),
 }
 
 pub(crate) fn convert_to_error_message(error: Error) -> Result<sn_messaging::client::Error> {

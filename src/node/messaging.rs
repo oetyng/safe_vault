@@ -6,7 +6,10 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use crate::{node_ops::OutgoingMsg, Error};
+use crate::{
+    node_ops::{OutgoingLazyError, OutgoingMsg},
+    Error,
+};
 use crate::{Network, Result};
 use log::{error, trace};
 use sn_messaging::{
@@ -45,7 +48,39 @@ pub(crate) async fn send(msg: OutgoingMsg, network: &Network) -> Result<()> {
     result.map_or_else(
         |err| {
             error!("Unable to send msg: {:?}", err);
-            Err(Error::Logic(format!("Unable to send msg: {:?}", msg_id)))
+            Err(Error::UnableToSend(message))
+        },
+        |()| Ok(()),
+    )
+}
+
+pub(crate) async fn send_error(msg: OutgoingLazyError, network: &Network) -> Result<()> {
+    trace!("Sending msg: {:?}", msg);
+    let src = SrcLocation::Node(network.our_name().await);
+    let itinerary = Itinerary {
+        src,
+        dst: msg.dst,
+        aggregation: Aggregation::None,
+    };
+
+    let msg_id = msg.id();
+
+    let dst_name = msg.dst.name().ok_or(Error::NoDestinationName)?;
+    let target_section_pk = network.get_section_pk_by_name(&dst_name).await?;
+
+    let target_section_pk = target_section_pk
+        .bls()
+        .ok_or(Error::NoSectionPublicKeyKnown(dst_name))?;
+
+    let message = Message::ProcessingError(msg.msg);
+    let result = network
+        .send_message(itinerary, message.serialize(dst_name, target_section_pk)?)
+        .await;
+
+    result.map_or_else(
+        |err| {
+            error!("Unable to send msg: {:?}", err);
+            Err(Error::UnableToSend(message))
         },
         |()| Ok(()),
     )
