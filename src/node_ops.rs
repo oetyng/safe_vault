@@ -221,6 +221,9 @@ pub enum NodeDuty {
     },
     /// Create proposals to vote unresponsive nodes as offline
     ProposeOffline(Vec<XorName>),
+    /// Send section history to erroring node.
+    /// This should also trigger resending of the original message.
+    UpdateErroringNodeSectionState,
     NoOp,
 }
 
@@ -301,6 +304,9 @@ impl Debug for NodeDuty {
             Self::FinishReplication(_) => write!(f, "FinishReplication"),
             Self::ReplicateChunk(_) => write!(f, "ReplicateChunk"),
             Self::ProposeOffline(nodes) => write!(f, "ProposeOffline({:?})", nodes),
+            Self::UpdateErroringNodeSectionState { .. } => {
+                write!(f, "UpdateErroringNodeSectionState")
+            }
         }
     }
 }
