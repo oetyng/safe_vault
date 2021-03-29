@@ -13,7 +13,10 @@ use sn_data_types::{
     RewardProposal, SignedTransfer, TransferAgreementProof,
 };
 use sn_messaging::{
-    client::{BlobRead, BlobWrite, DataExchange, ProcessMsg, ProcessingError, NodeCmdResult, QueryResponse},
+    client::{
+        BlobRead, BlobWrite, DataExchange, NodeCmdResult, ProcessMsg, ProcessingError,
+        QueryResponse,
+    },
     Aggregation, DstLocation, EndUser, MessageId, SrcLocation,
 };
 use sn_routing::Prefix;

@@ -19,7 +19,7 @@ use sn_messaging::{
     client::{
         BlobDataExchange, BlobRead, BlobWrite, ChunkMetadata, CmdError, Error as ErrorMessage,
         HolderMetadata, Message, NodeCmd, NodeCmdResult, NodeQuery, NodeSystemCmd, NodeSystemQuery,
-        QueryResponse, ProcessMsg,
+        ProcessMsg, QueryResponse,
     },
     Aggregation, DstLocation, EndUser, MessageId,
 };

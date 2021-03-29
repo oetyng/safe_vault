@@ -18,7 +18,9 @@ use sn_data_types::{
     SequenceOp, SequenceUser,
 };
 use sn_messaging::{
-    client::{CmdError, ProcessMsg, QueryResponse, SequenceDataExchange, SequenceRead, SequenceWrite},
+    client::{
+        CmdError, ProcessMsg, QueryResponse, SequenceDataExchange, SequenceRead, SequenceWrite,
+    },
     Aggregation, DstLocation, EndUser, MessageId,
 };
 
