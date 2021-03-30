@@ -15,7 +15,7 @@ use sn_data_types::{
 use sn_messaging::{
     client::{
         BlobRead, BlobWrite, DataExchange, NodeCmdResult, ProcessMsg, ProcessingError,
-        QueryResponse,
+        QueryResponse, SupportingInfo,
     },
     Aggregation, DstLocation, EndUser, MessageId, SrcLocation,
 };
@@ -186,6 +186,9 @@ pub enum NodeDuty {
     /// Send a lazy error as a result of a specfic message.
     /// The aim here is for the sender to respond with any missing state
     SendError(OutgoingLazyError),
+    /// Send supporting infor for a given processing error.
+    /// Theis should be any missing state required to proceed at the erroring node.
+    SendSupport(OutgoingSupportingInfo),
     /// Send the same request to each individual node.
     SendToNodes {
         msg: ProcessMsg,
@@ -226,7 +229,7 @@ pub enum NodeDuty {
     ProposeOffline(Vec<XorName>),
     /// Send section history to erroring node.
     /// This should also trigger resending of the original message.
-    UpdateErroringNodeSectionState,
+    ProvideSectionWalletSupportingInfo,
     NoOp,
 }
 
@@ -291,6 +294,7 @@ impl Debug for NodeDuty {
             Self::SetNodeJoinsAllowed(_) => write!(f, "SetNodeJoinsAllowed"),
             Self::Send(msg) => write!(f, "Send [ msg: {:?} ]", msg),
             Self::SendError(msg) => write!(f, "SendError [ msg: {:?} ]", msg),
+            Self::SendSupport(msg) => write!(f, "SendSupport [ msg: {:?} ]", msg),
             Self::SendToNodes {
                 msg,
                 targets,
@@ -309,6 +313,9 @@ impl Debug for NodeDuty {
             Self::ProposeOffline(nodes) => write!(f, "ProposeOffline({:?})", nodes),
             Self::UpdateErroringNodeSectionState { .. } => {
                 write!(f, "UpdateErroringNodeSectionState")
+            }
+            Self::ProvideSectionWalletSupportingInfo { .. } => {
+                write!(f, "ProvideSectionWalletSupportingInfo")
             }
         }
     }
@@ -330,6 +337,12 @@ pub struct OutgoingLazyError {
     pub dst: DstLocation,
 }
 
+#[derive(Debug, Clone)]
+pub struct OutgoingSupportingInfo {
+    pub msg: SupportingInfo,
+    pub dst: DstLocation,
+}
+
 impl OutgoingMsg {
     pub fn id(&self) -> MessageId {
         self.msg.id()
@@ -338,6 +351,12 @@ impl OutgoingMsg {
 
 impl OutgoingLazyError {
     pub fn id(&self) -> MessageId {
-        self.msg.id
+        self.msg.id()
+    }
+}
+
+impl OutgoingSupportingInfo {
+    pub fn id(&self) -> MessageId {
+        self.msg.id()
     }
 }
