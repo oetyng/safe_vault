@@ -12,7 +12,7 @@ use crate::{
     event_mapping::MsgContext,
     metadata::Metadata,
     node::{AdultRole, Role},
-node_ops::{NodeDuties, NodeDuty, OutgoingMsg, OutgoingSupportingInfo},
+    node_ops::{NodeDuties, NodeDuty, OutgoingMsg, OutgoingSupportingInfo},
     section_funds::{reward_stage::RewardStage, Credits, SectionFunds},
     Error, Node, Result,
 };
