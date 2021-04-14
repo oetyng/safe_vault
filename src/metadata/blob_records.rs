@@ -528,7 +528,6 @@ impl BlobRecords {
                     ProcessMsg::NodeQuery {
                         query: NodeQuery::System(NodeSystemQuery::GetChunk(address)),
                         id: MessageId::combine(vec![*address.name(), holder]),
-                        target_section_pk: None,
                     },
                     holder,
                 )

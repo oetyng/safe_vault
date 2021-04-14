@@ -311,16 +311,12 @@ impl Debug for NodeDuty {
             Self::FinishReplication(_) => write!(f, "FinishReplication"),
             Self::ReplicateChunk(_) => write!(f, "ReplicateChunk"),
             Self::ProposeOffline(nodes) => write!(f, "ProposeOffline({:?})", nodes),
-            Self::UpdateErroringNodeSectionState { .. } => {
-                write!(f, "UpdateErroringNodeSectionState")
-            }
             Self::ProvideSectionWalletSupportingInfo { .. } => {
                 write!(f, "ProvideSectionWalletSupportingInfo")
             }
         }
     }
 }
-
 // --------------- Messaging ---------------
 
 #[derive(Debug, Clone)]

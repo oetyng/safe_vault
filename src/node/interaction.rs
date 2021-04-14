@@ -33,10 +33,9 @@ impl Node {
             let location = XorName::from(credit_proof.recipient());
             let msg_id = MessageId::from_content(&credit_proof.debiting_replicas_sig)?;
             ops.push(NodeDuty::Send(OutgoingMsg {
-                msg: Message::NodeCmd {
+                msg: ProcessMsg::NodeCmd {
                     cmd: Transfers(PropagateTransfer(credit_proof)),
                     id: msg_id,
-                    target_section_pk: None,
                 },
                 section_source: true, // i.e. errors go to our section
                 dst: DstLocation::Section(location),
@@ -130,7 +129,6 @@ impl Node {
                     metadata,
                 }),
                 id: msg_id,
-                target_section_pk: None,
             },
             section_source: false, // strictly this is not correct, but we don't expect responses to an event..
             dst,
