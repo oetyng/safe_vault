@@ -6,26 +6,27 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
+use super::DutyHandler;
 use crate::{
     node_ops::NodeDuties,
-    section_funds::{self, SectionFunds},
+    section_funds::{
+        elder_signing::ElderSigning,
+        reward_process::{OurSection, RewardProcess},
+        reward_wallets::RewardWallets,
+        SectionFunds,
+    },
+    state::ElderStateCommand,
     transfers::get_replicas::replica_info,
-    Error, Node, Result,
+    Error, Result,
 };
 use dashmap::DashMap;
 use log::debug;
-use section_funds::{
-    elder_signing::ElderSigning,
-    reward_process::{OurSection, RewardProcess},
-    reward_wallets::RewardWallets,
-    Credits,
-};
 use sn_data_types::{NodeAge, PublicKey, Token};
 use sn_messaging::MessageId;
 use sn_routing::{Prefix, XorName};
 use std::collections::BTreeMap;
 
-impl Node {
+impl DutyHandler {
     /// Called on split reported from routing layer.
     pub(crate) async fn begin_split_as_newbie(
         &mut self,
@@ -49,18 +50,19 @@ impl Node {
             our_key,
         };
 
-        let elder = self.role.as_elder_mut()?;
-
         let process =
             RewardProcess::new(section, ElderSigning::new(self.network_api.clone()).await?);
 
         let wallets = RewardWallets::new(BTreeMap::<XorName, (NodeAge, PublicKey)>::new());
 
-        elder.section_funds = SectionFunds::Churning {
-            process,
-            wallets,
-            payments: DashMap::new(),
-        };
+        let _ = self
+            .state
+            .elder_command(ElderStateCommand::SetSectionFunds(SectionFunds::Churning {
+                process,
+                wallets,
+                payments: DashMap::new(),
+            }))
+            .await?;
 
         Ok(())
     }
@@ -72,17 +74,13 @@ impl Node {
         our_key: PublicKey,
         sibling_key: PublicKey,
     ) -> Result<NodeDuties> {
-        let elder = self.role.as_elder_mut()?;
-
         let info = replica_info(&self.network_api).await?;
-        elder.transfers.update_replica_info(info);
+        let _ = self
+            .state
+            .elder_command(ElderStateCommand::UpdateReplicaInfo(info))
+            .await?;
 
-        let (wallets, payments) = match &mut elder.section_funds {
-            SectionFunds::KeepingNodeWallets { wallets, payments }
-            | SectionFunds::Churning {
-                wallets, payments, ..
-            } => (wallets.clone(), payments.sum()),
-        };
+        let (wallets, payments) = self.state.wallets_and_payments().await?;
 
         let sibling_prefix = our_prefix.sibling();
 
@@ -98,7 +96,7 @@ impl Node {
         let mut ops = vec![];
 
         if payments > Token::zero() {
-            let section_managed = elder.transfers.managed_amount().await?;
+            let section_managed = self.state.transfers_managed_amount().await?;
 
             // payments made since last churn
             debug!("Payments: {}", payments);
@@ -120,20 +118,23 @@ impl Node {
                     .await?,
             );
 
-            elder.section_funds = SectionFunds::Churning {
-                process,
-                wallets: wallets.clone(),
-                payments: DashMap::new(), // clear old payments
-            };
+            let _ = self
+                .state
+                .elder_command(ElderStateCommand::SetSectionFunds(SectionFunds::Churning {
+                    process,
+                    wallets: wallets.clone(),
+                    payments: DashMap::new(), // clear old payments
+                }))
+                .await?;
         } else {
             debug!("Not paying out rewards, as no payments have been received since last split.");
         }
 
         let msg_id = MessageId::combine(vec![our_prefix.name(), XorName::from(our_key)]);
-        ops.push(self.push_state(our_prefix, msg_id));
+        ops.push(self.push_state(our_prefix, msg_id).await);
 
         let msg_id = MessageId::combine(vec![sibling_prefix.name(), XorName::from(sibling_key)]);
-        ops.push(self.push_state(sibling_prefix, msg_id));
+        ops.push(self.push_state(sibling_prefix, msg_id).await);
 
         Ok(ops)
     }
