@@ -18,9 +18,9 @@ use sn_data_types::{Blob, BlobAddress, Error as DtError, PublicKey};
 use sn_messaging::{
     client::{
         BlobDataExchange, BlobRead, BlobWrite, ChunkMetadata, CmdError, Error as ErrorMessage,
-        HolderMetadata, Message, NodeCmd, NodeCmdResult, NodeQuery, NodeSystemCmd, NodeSystemQuery,
-        ProcessMsg, QueryResponse,
+        HolderMetadata, NodeCmdResult, ProcessMsg, QueryResponse,
     },
+    node::{NodeCmd, NodeQuery, NodeSystemCmd, NodeSystemQuery},
     Aggregation, DstLocation, EndUser, MessageId,
 };
 
