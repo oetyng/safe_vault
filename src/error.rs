@@ -7,10 +7,7 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use sn_data_types::{Error as DtError, PublicKey};
-use sn_messaging::{
-    client::{Error as ErrorMessage, Message},
-    MessageId,
-};
+use sn_messaging::{client::Error as ErrorMessage, MessageId, Msg};
 use std::io;
 use thiserror::Error;
 use xor_name::XorName;
@@ -133,7 +130,7 @@ pub enum Error {
     Bincode(#[from] bincode::Error),
     /// Network message error.
     #[error("Client message error:: {0}")]
-    ClientMessage(#[from] sn_messaging::client::Error),
+    ClientMsg(#[from] sn_messaging::client::Error),
     /// Network processing error message.
     #[error("Procesing error:: {0:?}")]
     ProcessingError(sn_messaging::client::ProcessingError),
@@ -181,7 +178,7 @@ pub enum Error {
     Configuration(String),
     /// Unable to send message
     #[error("Unable to send message: {0:?}")]
-    UnableToSend(Message),
+    UnableToSend(Msg),
 }
 
 pub(crate) fn convert_to_error_message(error: Error) -> Result<sn_messaging::client::Error> {

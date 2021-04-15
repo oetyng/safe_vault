@@ -9,11 +9,11 @@
 mod map_msg;
 
 use super::node_ops::NodeDuty;
-use crate::{network::Network, Error};
+use crate::{network::Network, node_ops::MsgType, Error};
 use log::{debug, info, trace, warn};
 use map_msg::{map_node_msg, map_node_process_err_msg, match_user_sent_msg};
 use sn_data_types::PublicKey;
-use sn_messaging::{client::Message, SrcLocation};
+use sn_messaging::{client::ClientMsg, Msg, SrcLocation};
 use sn_routing::XorName;
 use sn_routing::{Event as RoutingEvent, NodeElderChange, MIN_AGE};
 use std::{thread::sleep, time::Duration};
@@ -32,8 +32,17 @@ pub enum Mapping {
 
 #[derive(Debug, Clone)]
 pub enum MsgContext {
-    Msg { msg: Message, src: SrcLocation },
+    Msg { msg: Msg, src: SrcLocation },
     Bytes { msg: bytes::Bytes, src: SrcLocation },
+}
+
+impl MsgType {
+    pub fn convert(msg: MsgType) -> Msg {
+        match msg {
+            MsgType::Node(msg) => Msg::Node(msg),
+            MsgType::Client(msg) => Msg::Client(ClientMsg::Process(msg)),
+        }
+    }
 }
 
 /// Process any routing event
@@ -43,7 +52,7 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
         RoutingEvent::MessageReceived {
             content, src, dst, ..
         } => {
-            let msg = match Message::from(content.clone()) {
+            let msg = match Msg::from(content.clone()) {
                 Ok(msg) => msg,
                 Err(error) => {
                     return Mapping::Error {
@@ -54,24 +63,35 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
             };
 
             match msg {
-                Message::Process(process_msg) => map_node_msg(process_msg, src, dst),
-                Message::ProcessingError(error) => map_node_process_err_msg(error, src, dst),
-                Message::SupportingInfo(msg) => {
-                    debug!(">>>>> Supporting info received");
-
-                    Mapping::Ok {
-                        op: NodeDuty::NoOp,
-                        ctx: Some(MsgContext::Msg {
-                            msg: Message::SupportingInfo(msg),
-                            src,
-                        }),
+                Msg::Node(msg) => map_node_msg(msg, src, dst),
+                Msg::Client(msg) => match msg {
+                    ClientMsg::Process(process_msg) => {
+                        warn!(
+                            "Unexpected ClientMsg at RoutingEvent::MessageReceived {:?}",
+                            process_msg
+                        );
+                        return Mapping::Ok {
+                            op: NodeDuty::NoOp,
+                            ctx: None,
+                        };
                     }
-                }
+                    ClientMsg::ProcessingError(error) => map_node_process_err_msg(error, src, dst),
+                    ClientMsg::SupportingInfo(msg) => {
+                        debug!(">>>>> Supporting info received");
+                        Mapping::Ok {
+                            op: NodeDuty::NoOp,
+                            ctx: Some(MsgContext::Msg {
+                                msg: Msg::Client(ClientMsg::SupportingInfo(msg)),
+                                src,
+                            }),
+                        }
+                    }
+                },
             }
         }
-        RoutingEvent::ClientMessageReceived { msg, user } => match *msg {
-            Message::Process(process_msg) => match_user_sent_msg(process_msg, user),
-            Message::ProcessingError(error) => {
+        RoutingEvent::ClientMsgReceived { msg, user } => match *msg {
+            ClientMsg::Process(process_msg) => match_user_sent_msg(process_msg, user),
+            ClientMsg::ProcessingError(error) => {
                 warn!(
                     ">>>> Incoming client processing error received. This needs to be handled {:?}",
                     error.reason()
@@ -79,18 +99,17 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
                 Mapping::Ok {
                     op: NodeDuty::NoOp,
                     ctx: Some(MsgContext::Msg {
-                        msg: Message::ProcessingError(error),
+                        msg: Msg::Client(ClientMsg::ProcessingError(error)),
                         src: SrcLocation::EndUser(user),
                     }),
                 }
             }
-            Message::SupportingInfo(msg) => {
+            ClientMsg::SupportingInfo(msg) => {
                 debug!(">>>>> Supporting info received");
-
                 Mapping::Ok {
                     op: NodeDuty::NoOp,
                     ctx: Some(MsgContext::Msg {
-                        msg: Message::SupportingInfo(msg),
+                        msg: Msg::Client(ClientMsg::SupportingInfo(msg)),
                         src: SrcLocation::EndUser(user),
                     }),
                 }

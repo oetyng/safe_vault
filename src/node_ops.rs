@@ -17,6 +17,7 @@ use sn_messaging::{
         BlobRead, BlobWrite, DataExchange, NodeCmdResult, ProcessMsg, ProcessingError,
         QueryResponse, SupportingInfo,
     },
+    node::NodeMsg,
     Aggregation, DstLocation, EndUser, MessageId, SrcLocation,
 };
 use sn_routing::Prefix;
@@ -191,7 +192,7 @@ pub enum NodeDuty {
     SendSupport(OutgoingSupportingInfo),
     /// Send the same request to each individual node.
     SendToNodes {
-        msg: ProcessMsg,
+        msg: NodeMsg,
         targets: BTreeSet<XorName>,
         aggregation: Aggregation,
     },
@@ -227,9 +228,6 @@ pub enum NodeDuty {
     },
     /// Create proposals to vote unresponsive nodes as offline
     ProposeOffline(Vec<XorName>),
-    /// Send section history to erroring node.
-    /// This should also trigger resending of the original message.
-    ProvideSectionWalletSupportingInfo,
     NoOp,
 }
 
@@ -311,9 +309,6 @@ impl Debug for NodeDuty {
             Self::FinishReplication(_) => write!(f, "FinishReplication"),
             Self::ReplicateChunk(_) => write!(f, "ReplicateChunk"),
             Self::ProposeOffline(nodes) => write!(f, "ProposeOffline({:?})", nodes),
-            Self::ProvideSectionWalletSupportingInfo { .. } => {
-                write!(f, "ProvideSectionWalletSupportingInfo")
-            }
         }
     }
 }
@@ -321,10 +316,26 @@ impl Debug for NodeDuty {
 
 #[derive(Debug, Clone)]
 pub struct OutgoingMsg {
-    pub msg: ProcessMsg,
+    pub msg: MsgType,
     pub dst: DstLocation,
     pub section_source: bool,
     pub aggregation: Aggregation,
+}
+
+#[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
+pub enum MsgType {
+    Node(NodeMsg),
+    Client(ProcessMsg),
+}
+
+impl MsgType {
+    pub fn id(&self) -> MessageId {
+        match self {
+            Self::Node(msg) => msg.id(),
+            Self::Client(msg) => msg.id(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

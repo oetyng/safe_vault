@@ -2351,8 +2351,8 @@ dependencies = [
 
 [[package]]
 name = "sn_routing"
-version = "0.60.3"
-source = "git+https://github.com/oetyng/sn_routing?branch=anti-entropy#341a44a3a5898ff2c36da883d2b0b9a0a10030f2"
+version = "0.62.0"
+source = "git+https://github.com/maidsafe/sn_routing?branch=anti-entropy#ab84f759eeee6a890e16daa22be886a667c925fe"
 dependencies = [
  "bincode",
  "bls_dkg",

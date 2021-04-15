@@ -26,11 +26,11 @@ use crate::{
     Config, Error, Result,
 };
 use bls::SecretKey;
-use log::{error, info};
+use log::{error, warn};
 use sn_data_types::PublicKey;
 use sn_messaging::{
-    client::{Error as ErrorMessage, Message, ProcessingError},
-    DstLocation, MessageId, SrcLocation,
+    client::{ClientMsg, Error as ErrorMessage, ProcessingError},
+    DstLocation, MessageId, Msg, SrcLocation,
 };
 use sn_routing::{EventStream, Prefix, XorName};
 use std::path::{Path, PathBuf};
@@ -234,7 +234,7 @@ fn try_handle_error(err: Error, ctx: Option<MsgContext>) -> NodeDuty {
                 warn!("Sending in response to a message: {:?}", msg);
                 let dst = get_dst_from_src(src);
                 match msg {
-                    Message::Process(msg) => {
+                    Msg::Client(ClientMsg::Process(msg)) => {
                         let error_message: ErrorMessage = match convert_to_error_message(err) {
                             Ok(err) => err,
                             Err(error) => {
@@ -248,14 +248,15 @@ fn try_handle_error(err: Error, ctx: Option<MsgContext>) -> NodeDuty {
                             dst,
                         })
                     }
-                    Message::ProcessingError(_err) => {
+                    Msg::Client(ClientMsg::ProcessingError(_err)) => {
                         // TODO: handle error as a result of handling processing error...
                         NodeDuty::NoOp
                     }
-                    Message::SupportingInfo(_msg) => {
+                    Msg::Client(ClientMsg::SupportingInfo(_msg)) => {
                         // TODO: handle error as a result of supporting info msg
                         NodeDuty::NoOp
                     }
+                    _ => NodeDuty::NoOp,
                 }
             }
             // An error decoding a message

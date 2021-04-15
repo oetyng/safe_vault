@@ -9,14 +9,14 @@
 use crate::{
     chunk_store::{BlobChunkStore, UsedSpace},
     error::convert_to_error_message,
-    node_ops::{NodeDuty, OutgoingMsg},
+    node_ops::{MsgType, NodeDuty, OutgoingMsg},
     Error, Result,
 };
 use log::{error, info};
 use sn_data_types::{Blob, BlobAddress};
 use sn_messaging::{
     client::{CmdError, Error as ErrorMessage, ProcessMsg, QueryResponse},
-    node::{NodeCmdMessage, NodeDataQueryResponse, NodeQueryResponse},
+    node::{NodeDataQueryResponse, NodeMsg, NodeQueryResponse},
     Aggregation, DstLocation, EndUser, MessageId,
 };
 use std::{
@@ -42,30 +42,18 @@ impl ChunkStorage {
         msg_id: MessageId,
         origin: EndUser,
     ) -> Result<NodeDuty> {
-        if let Err(error) = self.try_store(data, origin).await {
-            Ok(NodeDuty::Send(OutgoingMsg {
-                msg: Message::NodeCmdResult {
-                    result: Err(CmdError::Data(convert_to_error_message(error)?)),
-                    id: msg_id,
-                },
-                section_source: false, // sent as single node
-                // Data's metadata section
-                dst: DstLocation::Section(*data.address().name()),
-                aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
-            }))
+        let result = if let Err(error) = self.try_store(data, origin).await {
+            Err(CmdError::Data(convert_to_error_message(error)?))
         } else {
-            Ok(NodeDuty::Send(OutgoingMsg {
-                msg: Message::NodeCmdResult {
-                    result: Ok(()),
-                    id: msg_id,
-                    target_section_pk: None,
-                },
-                section_source: false,
-                // Data's metadata section
-                dst: DstLocation::Section(*data.address().name()),
-                aggregation: Aggregation::None,
-            }))
-        }
+            Ok(())
+        };
+        Ok(NodeDuty::Send(OutgoingMsg {
+            msg: MsgType::Node(NodeMsg::NodeCmdResult { result, id: msg_id }),
+            section_source: false, // sent as single node
+            // Data's metadata section
+            dst: DstLocation::Section(*data.address().name()),
+            aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
+        }))
     }
 
     async fn try_store(&mut self, data: &Blob, origin: EndUser) -> Result<()> {
@@ -105,11 +93,11 @@ impl ChunkStorage {
             .get(address)
             .map_err(|_| ErrorMessage::NoSuchData);
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: ProcessMsg::QueryResponse {
+            msg: MsgType::Client(ProcessMsg::QueryResponse {
                 id: MessageId::in_response_to(&msg_id),
                 response: QueryResponse::GetBlob(result),
                 correlation_id: msg_id,
-            },
+            }),
             section_source: false, // sent as single node
             // Respond to the chunk's metadata elders
             dst: DstLocation::Section(*address.name()),
@@ -131,11 +119,11 @@ impl ChunkStorage {
 
         if let Ok(data) = result {
             Ok(NodeDuty::Send(OutgoingMsg {
-                msg: ProcessMsg::NodeQueryResponse {
+                msg: MsgType::Node(NodeMsg::NodeQueryResponse {
                     response: NodeQueryResponse::Data(NodeDataQueryResponse::GetChunk(Ok(data))),
                     id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
-                },
+                }),
                 section_source: false,              // sent as single node
                 dst: DstLocation::Section(section), // send it back to section Elders
                 aggregation: Aggregation::None,
@@ -199,11 +187,10 @@ impl ChunkStorage {
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {
-            msg: Message::NodeCmdResult {
+            msg: MsgType::Node(NodeMsg::NodeCmdResult {
                 result: result.map_err(CmdError::Data),
                 id: msg_id,
-                target_section_pk: None,
-            },
+            }),
             section_source: false, // sent as single node
             // respond to data's metadata elders
             dst: DstLocation::Section(*address.name()),
