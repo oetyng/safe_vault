@@ -2234,8 +2234,7 @@ dependencies = [
 [[package]]
 name = "sn_messaging"
 version = "16.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b592de8411a951bb7376a3bdca263e73cc3df337021f82f0652e321a2e9f9d5"
+source = "git+https://github.com/Yoga07/sn_messaging?branch=data-loss#6b154d14be980a7cebe61abeb02ec9ed8f58e38a"
 dependencies = [
  "bincode",
  "bytes 1.0.1",
@@ -2302,9 +2301,8 @@ dependencies = [
 
 [[package]]
 name = "sn_routing"
-version = "0.60.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e70c1d2c0d338d703bf251f75cdd98761d0b6565c5ff223e3a2c283626465fa"
+version = "0.60.8"
+source = "git+https://github.com/Yoga07/sn_routing?branch=data-loss#8187b9d1f9d48dd24ffd15af8854a96ad78a5652"
 dependencies = [
  "bincode",
  "bls_dkg",
