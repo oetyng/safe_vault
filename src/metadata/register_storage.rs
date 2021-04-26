@@ -7,7 +7,7 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{
-    chunk_store::{RegisterChunkStore, UsedSpace},
+    data_store::{RegisterDataStore, UsedSpace},
     error::convert_to_error_message,
     node_ops::{NodeDuty, OutgoingMsg},
     Error, Result,
@@ -26,12 +26,12 @@ use std::{
 
 /// Operations over the data type Register.
 pub(super) struct RegisterStorage {
-    chunks: RegisterChunkStore,
+    chunks: RegisterDataStore,
 }
 
 impl RegisterStorage {
     pub(super) async fn new(path: &Path, used_space: UsedSpace) -> Result<Self> {
-        let chunks = RegisterChunkStore::new(path, used_space).await?;
+        let chunks = RegisterDataStore::new(path, used_space).await?;
         Ok(Self { chunks })
     }
 

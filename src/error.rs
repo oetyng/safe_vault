@@ -26,7 +26,7 @@ pub enum Error {
     /// The key balance already exists when it was expected to be empty (during section genesis)
     #[error("Balance already exists.")]
     BalanceExists,
-    /// Not enough space in `ChunkStore` to perform `put`.
+    /// Not enough space in `DataStore` to perform `put`.
     #[error("Not enough space")]
     NotEnoughSpace,
     /// Not Section PublicKey.
@@ -59,7 +59,7 @@ pub enum Error {
     /// No holders of chunk in metadata db.
     #[error("No holders found for chunk")]
     NoHoldersOfChunk,
-    /// Key, Value pair not found in `ChunkStore`.
+    /// Key, Value pair not found in `DataStore`.
     #[error("No such chunk")]
     NoSuchChunk,
     /// Unable to process fund churn message.

@@ -14,8 +14,8 @@ mod role;
 mod split;
 
 use crate::{
-    chunk_store::UsedSpace,
     chunks::Chunks,
+    data_store::UsedSpace,
     event_mapping::{map_routing_event, LazyError, Mapping, MsgContext},
     network::Network,
     node_ops::NodeDuty,

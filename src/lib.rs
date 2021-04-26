@@ -31,9 +31,9 @@
 
 mod capacity;
 mod chaos;
-mod chunk_store;
 mod chunks;
 mod config_handler;
+mod data_store;
 mod error;
 mod event_mapping;
 mod metadata;

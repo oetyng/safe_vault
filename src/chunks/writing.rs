@@ -11,15 +11,15 @@
 use super::chunk_storage::ChunkStorage;
 use crate::node_ops::NodeDuty;
 use crate::Result;
-use sn_messaging::{client::BlobWrite, EndUser, MessageId};
+use sn_messaging::{client::ChunkWrite, EndUser, MessageId};
 
 pub(super) async fn get_result(
-    write: &BlobWrite,
+    write: &ChunkWrite,
     msg_id: MessageId,
     origin: EndUser,
     storage: &mut ChunkStorage,
 ) -> Result<NodeDuty> {
-    use BlobWrite::*;
+    use ChunkWrite::*;
     match &write {
         New(data) => storage.store(&data, msg_id, origin).await,
         DeletePrivate(address) => storage.delete(*address, msg_id, origin).await, // really though, for a delete, what we should be looking at is the origin signature! That would be the source of truth!

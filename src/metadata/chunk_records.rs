@@ -14,10 +14,10 @@ use crate::{
     Error, Result,
 };
 use log::{debug, error, info, trace, warn};
-use sn_data_types::{Blob, BlobAddress, Error as DtError, PublicKey};
+use sn_data_types::{Chunk, ChunkAddress, Error as DtError, PublicKey};
 use sn_messaging::{
     client::{
-        BlobDataExchange, BlobRead, BlobWrite, ChunkMetadata, CmdError, Error as ErrorMessage,
+        ChunkDataExchange, ChunkMetadata, ChunkRead, ChunkWrite, CmdError, Error as ErrorMessage,
         HolderMetadata, Message, NodeCmd, NodeQuery, NodeSystemCmd, NodeSystemQuery, QueryResponse,
     },
     Aggregation, DstLocation, EndUser, MessageId,
@@ -32,17 +32,17 @@ use xor_name::XorName;
 use super::adult_liveness::AdultLiveness;
 use super::adult_reader::AdultReader;
 
-// The number of separate copies of a blob chunk which should be maintained.
+// The number of separate copies of a chunk which should be maintained.
 const CHUNK_COPY_COUNT: usize = 4;
 
-/// Operations over the data type Blob.
-pub(super) struct BlobRecords {
+/// Operations over Chunks.
+pub(super) struct ChunkRecords {
     dbs: ChunkHolderDbs,
     reader: AdultReader,
     adult_liveness: AdultLiveness,
 }
 
-impl BlobRecords {
+impl ChunkRecords {
     pub(super) fn new(dbs: ChunkHolderDbs, reader: AdultReader) -> Self {
         Self {
             dbs,
@@ -51,8 +51,8 @@ impl BlobRecords {
         }
     }
 
-    pub async fn get_all_data(&self) -> Result<BlobDataExchange> {
-        debug!("Getting Blob records");
+    pub async fn get_all_data(&self) -> Result<ChunkDataExchange> {
+        debug!("Getting chunk records");
         // Prepare full_adult details
         let adult_details = &self.dbs.full_adults.lock().await;
         let all_full_adults_keys = adult_details.get_all();
@@ -86,24 +86,24 @@ impl BlobRecords {
             let _ = metadata.insert(key, val);
         }
 
-        Ok(BlobDataExchange {
+        Ok(ChunkDataExchange {
             full_adults,
             holders,
             metadata,
         })
     }
 
-    pub async fn update(&self, blob_data: BlobDataExchange) -> Result<()> {
-        debug!("Updating Blob records");
+    pub async fn update(&self, chunk_data: ChunkDataExchange) -> Result<()> {
+        debug!("Updating chunk records");
         let mut orig_full_adults = self.dbs.full_adults.lock().await;
         let mut orig_holders = self.dbs.holders.lock().await;
         let mut orig_meta = self.dbs.metadata.lock().await;
 
-        let BlobDataExchange {
+        let ChunkDataExchange {
             metadata,
             holders,
             full_adults,
-        } = blob_data;
+        } = chunk_data;
 
         for (key, value) in full_adults {
             orig_full_adults.set(&key, &value)?;
@@ -188,11 +188,11 @@ impl BlobRecords {
 
     pub(super) async fn write(
         &mut self,
-        write: BlobWrite,
+        write: ChunkWrite,
         msg_id: MessageId,
         origin: EndUser,
     ) -> Result<NodeDuty> {
-        use BlobWrite::*;
+        use ChunkWrite::*;
         match write {
             New(data) => self.store(data, msg_id, origin).await,
             DeletePrivate(address) => self.delete(address, msg_id, origin).await,
@@ -244,14 +244,19 @@ impl BlobRecords {
         self.dbs.full_adults.lock().await.total_keys() as u8
     }
 
-    async fn store(&mut self, data: Blob, msg_id: MessageId, origin: EndUser) -> Result<NodeDuty> {
+    async fn store(
+        &mut self,
+        chunk: Chunk,
+        msg_id: MessageId,
+        origin: EndUser,
+    ) -> Result<NodeDuty> {
         // If the data already exist, check the existing no of copies.
         // If no of copies are less then required, then continue with the put request.
-        let target_holders = if let Ok(metadata) = self.get_metadata_for(*data.address()).await {
+        let target_holders = if let Ok(metadata) = self.get_metadata_for(*chunk.address()).await {
             if metadata.holders.len() < CHUNK_COPY_COUNT {
-                self.get_new_holders_for_chunk(data.address()).await
-            } else if data.is_public() {
-                trace!("{}: All good, {:?}, chunk already exists.", self, data);
+                self.get_new_holders_for_chunk(chunk.address()).await
+            } else if chunk.is_public() {
+                trace!("{}: All good, {:?}, chunk already exists.", self, chunk);
                 return Ok(NodeDuty::NoOp);
             } else {
                 return Ok(NodeDuty::Send(OutgoingMsg {
@@ -266,26 +271,28 @@ impl BlobRecords {
                 }));
             }
         } else {
-            self.get_holders_for_chunk(data.name())
+            self.get_holders_for_chunk(chunk.name())
                 .await
                 .iter()
                 .cloned()
                 .collect::<BTreeSet<_>>()
         };
 
-        info!("Storing {} copies of the data", target_holders.len());
+        info!("Storing {} copies of the chunk", target_holders.len());
 
-        let blob_write = BlobWrite::New(data);
+        let chunk_write = ChunkWrite::New(chunk);
 
-        if self
-            .adult_liveness
-            .new_write(msg_id, blob_write.clone(), origin, target_holders.clone())
-        {
+        if self.adult_liveness.new_write(
+            msg_id,
+            chunk_write.clone(),
+            origin,
+            target_holders.clone(),
+        ) {
             Ok(NodeDuty::SendToNodes {
                 targets: target_holders,
                 msg: Message::NodeCmd {
                     cmd: NodeCmd::Chunks {
-                        cmd: blob_write,
+                        cmd: chunk_write,
                         origin,
                     },
                     id: msg_id,
@@ -307,26 +314,26 @@ impl BlobRecords {
         result: Result<(), CmdError>,
         src: XorName,
     ) -> Result<NodeDuty> {
-        if let Some(blob_write) = self
+        if let Some(chunk_write) = self
             .adult_liveness
             .record_adult_write_liveness(correlation_id, src)
         {
             if let Err(err) = result {
-                error!("Error at Adult while performing a BlobWrite: {:?}", err);
+                error!("Error at Adult while performing a ChunkWrite: {:?}", err);
                 // Depending on error, we might have to take action here.
             } else {
-                match blob_write {
-                    BlobWrite::New(data) => {
+                match chunk_write {
+                    ChunkWrite::New(data) => {
                         if let Err(e) = self
                             .set_chunk_holder(*data.address(), src, data.owner().cloned())
                             .await
                         {
                             warn!("Error ({:?}) setting chunk holder ({:?}) of {:?}, sent by origin: {:?}", e, src, *data.address(), data.owner());
                         } else {
-                            info!("(Chunk write msg {:?}): Successfully added {:?} to the list of holders for Blob at {:?}", correlation_id, src, data.address());
+                            info!("(Chunk write msg {:?}): Successfully added {:?} to the list of holders for chunk at {:?}", correlation_id, src, data.address());
                         }
                     }
-                    BlobWrite::DeletePrivate(_) => (),
+                    ChunkWrite::DeletePrivate(_) => (),
                 }
             }
         }
@@ -347,9 +354,9 @@ impl BlobRecords {
         response: QueryResponse,
         src: XorName,
     ) -> Result<NodeDuty> {
-        if !matches!(response, QueryResponse::GetBlob(_)) {
+        if !matches!(response, QueryResponse::GetChunk(_)) {
             return Err(Error::Logic(format!(
-                "Got {:?}, but only `GetBlob` query responses are supposed to exist in this flow.",
+                "Got {:?}, but only `GetChunk` query responses are supposed to exist in this flow.",
                 response
             )));
         }
@@ -379,7 +386,7 @@ impl BlobRecords {
         Ok(NodeDuty::ProposeOffline(unresponsive_adults))
     }
 
-    async fn send_blob_cmd_error(
+    async fn send_chunk_cmd_error(
         &self,
         error: Error,
         msg_id: MessageId,
@@ -400,20 +407,20 @@ impl BlobRecords {
 
     async fn delete(
         &mut self,
-        address: BlobAddress,
+        address: ChunkAddress,
         msg_id: MessageId,
         origin: EndUser,
     ) -> Result<NodeDuty> {
         let metadata = match self.get_metadata_for(address).await {
             Ok(metadata) => metadata,
-            Err(error) => return self.send_blob_cmd_error(error, msg_id, origin).await,
+            Err(error) => return self.send_chunk_cmd_error(error, msg_id, origin).await,
         };
 
         // todo: use signature verification instead
         if let Some(data_owner) = metadata.owner {
             if &data_owner != origin.id() {
                 return self
-                    .send_blob_cmd_error(
+                    .send_chunk_cmd_error(
                         Error::NetworkData(DtError::AccessDenied(*origin.id())),
                         msg_id,
                         origin,
@@ -431,13 +438,13 @@ impl BlobRecords {
 
         if self.adult_liveness.new_write(
             msg_id,
-            BlobWrite::DeletePrivate(address),
+            ChunkWrite::DeletePrivate(address),
             origin,
             metadata.holders.clone(),
         ) {
             let msg = Message::NodeCmd {
                 cmd: NodeCmd::Chunks {
-                    cmd: BlobWrite::DeletePrivate(address),
+                    cmd: ChunkWrite::DeletePrivate(address),
                     origin,
                 },
                 id: msg_id,
@@ -458,7 +465,7 @@ impl BlobRecords {
 
     async fn set_chunk_holder(
         &mut self,
-        blob_address: BlobAddress,
+        chunk_address: ChunkAddress,
         holder: XorName,
         owner: Option<PublicKey>,
     ) -> Result<()> {
@@ -468,9 +475,9 @@ impl BlobRecords {
         //   chunk.  Not known yet where we'll get the chunk from to do that.
         info!("Setting chunk holder");
 
-        let db_key = blob_address.to_db_key()?;
+        let db_key = chunk_address.to_db_key()?;
         let mut metadata = self
-            .get_metadata_for(blob_address)
+            .get_metadata_for(chunk_address)
             .await
             .unwrap_or_default();
 
@@ -490,7 +497,7 @@ impl BlobRecords {
 
         // We're acting as data handler, received request from client handlers
         let mut holders_metadata = self.get_holder(holder).await.unwrap_or_default();
-        let _ = holders_metadata.chunks.insert(blob_address);
+        let _ = holders_metadata.chunks.insert(chunk_address);
 
         if let Err(error) = self
             .dbs
@@ -507,17 +514,17 @@ impl BlobRecords {
 
     async fn remove_chunk_holder(
         &mut self,
-        blob_address: BlobAddress,
+        chunk_address: ChunkAddress,
         holder_name: XorName,
     ) -> Result<()> {
-        let db_key = blob_address.to_db_key()?;
-        let metadata = self.get_metadata_for(blob_address).await;
+        let db_key = chunk_address.to_db_key()?;
+        let metadata = self.get_metadata_for(chunk_address).await;
         if let Ok(mut metadata) = metadata {
             let holder = self.get_holder(holder_name).await;
 
             // Remove the chunk from the holder metadata
             if let Ok(mut holder) = holder {
-                let _ = holder.chunks.remove(&blob_address);
+                let _ = holder.chunks.remove(&chunk_address);
                 if holder.chunks.is_empty() {
                     if let Err(error) = self.dbs.holders.lock().await.rem(&holder_name.to_db_key()?)
                     {
@@ -575,22 +582,22 @@ impl BlobRecords {
         Ok(cmds)
     }
 
-    pub(super) async fn replicate_chunk(&mut self, data: Blob) -> Result<NodeDuty> {
+    pub(super) async fn replicate_chunk(&mut self, chunk: Chunk) -> Result<NodeDuty> {
         info!("Replicating chunk");
         // If the data already exist, check the existing no of copies.
         // If no of copies are less then required, then continue with the put request.
         let (owner, target_holders) =
-            if let Ok(metadata) = self.get_metadata_for(*data.address()).await {
+            if let Ok(metadata) = self.get_metadata_for(*chunk.address()).await {
                 if metadata.holders.len() < CHUNK_COPY_COUNT {
                     (
                         metadata.owner,
-                        self.get_new_holders_for_chunk(data.address()).await,
+                        self.get_new_holders_for_chunk(chunk.address()).await,
                     )
                 } else {
                     trace!(
                         "{}: All good, {:?}, chunk copy count already satisfied.",
                         self,
-                        data
+                        chunk
                     );
                     return Ok(NodeDuty::NoOp);
                 }
@@ -598,7 +605,7 @@ impl BlobRecords {
                 trace!(
                     "{}: Did not find any metadata for the chunk, {:?}. No replication performed.",
                     self,
-                    data
+                    chunk
                 );
                 return Ok(NodeDuty::NoOp);
             };
@@ -607,24 +614,27 @@ impl BlobRecords {
 
         for holder in &target_holders {
             // TODO: This error needs to be handled in some way.
-            if let Err(e) = self.set_chunk_holder(*data.address(), *holder, owner).await {
+            if let Err(e) = self
+                .set_chunk_holder(*chunk.address(), *holder, owner)
+                .await
+            {
                 warn!(
                     "Error ({:?}) when replicating chunk and setting chunk holder ({:?}) of {:?}, owned by: {:?}",
                     e,
                     *holder,
-                    *data.address(),
+                    *chunk.address(),
                     owner
                 )
             }
         }
 
         // deterministic msg id for aggregation
-        let msg_id = MessageId::from_content(&(*data.name(), owner))?;
+        let msg_id = MessageId::from_content(&(*chunk.name(), owner))?;
 
         Ok(NodeDuty::SendToNodes {
             targets: target_holders,
             msg: Message::NodeCmd {
-                cmd: NodeCmd::System(NodeSystemCmd::ReplicateChunk(data)),
+                cmd: NodeCmd::System(NodeSystemCmd::ReplicateChunk(chunk)),
                 id: msg_id,
             },
             aggregation: Aggregation::AtDestination,
@@ -633,7 +643,7 @@ impl BlobRecords {
 
     async fn get_chunk_queries(
         &mut self,
-        address: BlobAddress,
+        address: ChunkAddress,
         current_holders: BTreeSet<XorName>,
     ) -> Result<NodeDuties> {
         let mut node_ops = Vec::new();
@@ -663,11 +673,11 @@ impl BlobRecords {
 
     pub(super) async fn read(
         &mut self,
-        read: &BlobRead,
+        read: &ChunkRead,
         msg_id: MessageId,
         origin: EndUser,
     ) -> Result<NodeDuty> {
-        use BlobRead::*;
+        use ChunkRead::*;
         match read {
             Get(address) => self.get(*address, msg_id, origin).await,
         }
@@ -675,14 +685,14 @@ impl BlobRecords {
 
     async fn get(
         &mut self,
-        address: BlobAddress,
+        address: ChunkAddress,
         msg_id: MessageId,
         origin: EndUser,
     ) -> Result<NodeDuty> {
         let query_error = |error: Error| async {
             Ok(NodeDuty::Send(OutgoingMsg {
                 msg: Message::QueryResponse {
-                    response: QueryResponse::GetBlob(Err(convert_to_error_message(error)?)),
+                    response: QueryResponse::GetChunk(Err(convert_to_error_message(error)?)),
                     id: MessageId::in_response_to(&msg_id),
                     correlation_id: msg_id,
                 },
@@ -708,7 +718,7 @@ impl BlobRecords {
         {
             let msg = Message::NodeQuery {
                 query: NodeQuery::Chunks {
-                    query: BlobRead::Get(address),
+                    query: ChunkRead::Get(address),
                     origin,
                 },
                 id: msg_id,
@@ -732,14 +742,14 @@ impl BlobRecords {
     async fn remove_holder(
         &mut self,
         name: XorName,
-    ) -> Result<BTreeMap<BlobAddress, BTreeSet<XorName>>> {
+    ) -> Result<BTreeMap<ChunkAddress, BTreeSet<XorName>>> {
         // stop tracking liveness of removed holder
         self.adult_liveness
             .stop_tracking(vec![name].into_iter().collect());
         // remove from full_nodes if present
         self.decrease_full_node_count_if_present(name).await?;
 
-        let mut blob_addresses: BTreeMap<BlobAddress, BTreeSet<XorName>> = BTreeMap::new();
+        let mut chunk_addresses: BTreeMap<ChunkAddress, BTreeSet<XorName>> = BTreeMap::new();
         let chunk_holder = self.get_holder(name).await;
 
         if let Ok(holder) = chunk_holder {
@@ -752,7 +762,7 @@ impl BlobRecords {
                         warn!("doesn't contain the holder",);
                     }
 
-                    let _ = blob_addresses.insert(chunk_address, metadata.holders.clone());
+                    let _ = chunk_addresses.insert(chunk_address, metadata.holders.clone());
 
                     if metadata.holders.is_empty() {
                         if let Err(error) = self.dbs.metadata.lock().await.rem(&db_key) {
@@ -772,7 +782,7 @@ impl BlobRecords {
             warn!("{}: Failed to delete metadata from DB: {:?}", self, error);
         };
 
-        Ok(blob_addresses)
+        Ok(chunk_addresses)
     }
 
     async fn get_holder(&self, holder: XorName) -> Result<HolderMetadata> {
@@ -798,7 +808,7 @@ impl BlobRecords {
         }
     }
 
-    async fn get_metadata_for(&self, address: BlobAddress) -> Result<ChunkMetadata> {
+    async fn get_metadata_for(&self, address: ChunkAddress) -> Result<ChunkMetadata> {
         match self
             .dbs
             .metadata
@@ -824,7 +834,7 @@ impl BlobRecords {
         }
     }
 
-    // Returns `XorName`s of the target holders for an Blob chunk.
+    // Returns `XorName`s of the target holders for a chunk.
     // Used to fetch the list of holders for a new chunk.
     async fn get_holders_for_chunk(&self, target: &XorName) -> Vec<XorName> {
         self.reader
@@ -832,9 +842,9 @@ impl BlobRecords {
             .await
     }
 
-    // Returns `XorName`s of the new target holders for an Blob chunk.
+    // Returns `XorName`s of the new target holders for a chunk.
     // Used to fetch the additional list of holders for existing chunks.
-    async fn get_new_holders_for_chunk(&self, target: &BlobAddress) -> BTreeSet<XorName> {
+    async fn get_new_holders_for_chunk(&self, target: &ChunkAddress) -> BTreeSet<XorName> {
         let closest_holders = self
             .get_holders_for_chunk(target.name())
             .await
@@ -851,8 +861,8 @@ impl BlobRecords {
     }
 }
 
-impl Display for BlobRecords {
+impl Display for ChunkRecords {
     fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
-        write!(formatter, "BlobRecords")
+        write!(formatter, "ChunkRecords")
     }
 }

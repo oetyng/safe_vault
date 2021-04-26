@@ -11,15 +11,15 @@ mod reading;
 mod writing;
 
 use crate::{
-    chunk_store::UsedSpace,
+    data_store::UsedSpace,
     node_ops::{NodeDuties, NodeDuty},
     Result,
 };
 use chunk_storage::ChunkStorage;
 use log::info;
-use sn_data_types::{Blob, BlobAddress};
+use sn_data_types::{Chunk, ChunkAddress};
 use sn_messaging::{
-    client::{BlobRead, BlobWrite},
+    client::{ChunkRead, ChunkWrite},
     EndUser, MessageId,
 };
 use std::{
@@ -43,13 +43,13 @@ impl Chunks {
         })
     }
 
-    pub async fn read(&mut self, read: &BlobRead, msg_id: MessageId) -> Result<NodeDuties> {
+    pub async fn read(&mut self, read: &ChunkRead, msg_id: MessageId) -> Result<NodeDuties> {
         reading::get_result(read, msg_id, &self.chunk_storage).await
     }
 
     pub async fn write(
         &mut self,
-        write: &BlobWrite,
+        write: &ChunkWrite,
         msg_id: MessageId,
         origin: EndUser,
     ) -> Result<NodeDuty> {
@@ -68,19 +68,19 @@ impl Chunks {
     /// Returns a chunk to the Elders of a section.
     pub async fn get_chunk_for_replication(
         &self,
-        address: BlobAddress,
+        address: ChunkAddress,
         msg_id: MessageId,
         section: XorName,
     ) -> Result<NodeDuty> {
-        info!("Send blob for replication to the Elders.");
+        info!("Send chunk for replication to the Elders.");
         self.chunk_storage
             .get_for_replication(address, msg_id, section)
             .await
     }
 
     /// Stores a chunk that Elders sent to it for replication.
-    pub async fn store_for_replication(&mut self, blob: Blob) -> Result<()> {
-        self.chunk_storage.store_for_replication(blob).await
+    pub async fn store_for_replication(&mut self, chunk: Chunk) -> Result<()> {
+        self.chunk_storage.store_for_replication(chunk).await
     }
 }
 

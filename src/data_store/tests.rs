@@ -8,7 +8,7 @@
 
 use super::{
     chunk::{Chunk, ChunkId},
-    ChunkStore, Result as ChunkStoreResult, Subdir, UsedSpace,
+    DataStore, Result as DataStoreResult, Subdir, UsedSpace,
 };
 use crate::{to_db_key::ToDbKey, Error, Result};
 use rand::{distributions::Standard, rngs::ThreadRng, Rng};
@@ -36,7 +36,7 @@ struct Id(u64);
 impl ToDbKey for Id {}
 impl ChunkId for Id {}
 
-impl Subdir for ChunkStore<Data> {
+impl Subdir for DataStore<Data> {
     fn subdir() -> &'static Path {
         Path::new("test")
     }
@@ -47,7 +47,7 @@ fn new_rng() -> ThreadRng {
     rand::thread_rng()
 }
 
-fn temp_dir() -> ChunkStoreResult<TempDir> {
+fn temp_dir() -> DataStoreResult<TempDir> {
     TempDir::new("test").map_err(|e| Error::TempDirCreationFailed(e.to_string()))
 }
 
@@ -87,7 +87,7 @@ async fn successful_put() -> Result<()> {
 
     let root = temp_dir()?;
     let used_space = UsedSpace::new(u64::MAX);
-    let mut chunk_store = ChunkStore::<Data>::new(root.path(), used_space.clone()).await?;
+    let mut chunk_store = DataStore::<Data>::new(root.path(), used_space.clone()).await?;
 
     for (index, (data, size)) in chunks.data_and_sizes.iter().enumerate().rev() {
         let the_data = &Data {
@@ -123,7 +123,7 @@ async fn failed_put_when_not_enough_space() -> Result<()> {
     let root = temp_dir()?;
     let capacity = 32;
     let used_space = UsedSpace::new(capacity);
-    let mut chunk_store = ChunkStore::new(root.path(), used_space.clone()).await?;
+    let mut chunk_store = DataStore::new(root.path(), used_space.clone()).await?;
 
     let data = Data {
         id: Id(rng.gen()),
@@ -148,7 +148,7 @@ async fn delete() -> Result<()> {
 
     let root = temp_dir()?;
     let used_space = UsedSpace::new(u64::MAX);
-    let mut chunk_store = ChunkStore::new(root.path(), used_space.clone()).await?;
+    let mut chunk_store = DataStore::new(root.path(), used_space.clone()).await?;
 
     for (index, (data, size)) in chunks.data_and_sizes.iter().enumerate() {
         let the_data = &Data {
@@ -173,7 +173,7 @@ async fn put_and_get_value_should_be_same() -> Result<()> {
 
     let root = temp_dir()?;
     let used_space = UsedSpace::new(u64::MAX);
-    let mut chunk_store = ChunkStore::new(root.path(), used_space.clone()).await?;
+    let mut chunk_store = DataStore::new(root.path(), used_space.clone()).await?;
 
     for (index, (data, _)) in chunks.data_and_sizes.iter().enumerate() {
         chunk_store
@@ -199,7 +199,7 @@ async fn overwrite_value() -> Result<()> {
 
     let root = temp_dir()?;
     let used_space = UsedSpace::new(u64::MAX);
-    let mut chunk_store = ChunkStore::new(root.path(), used_space.clone()).await?;
+    let mut chunk_store = DataStore::new(root.path(), used_space.clone()).await?;
 
     for (data, size) in chunks.data_and_sizes {
         chunk_store
@@ -220,7 +220,7 @@ async fn overwrite_value() -> Result<()> {
 async fn get_fails_when_key_does_not_exist() -> Result<()> {
     let root = temp_dir()?;
     let used_space = UsedSpace::new(u64::MAX);
-    let chunk_store: ChunkStore<Data> = ChunkStore::new(root.path(), used_space.clone()).await?;
+    let chunk_store: DataStore<Data> = DataStore::new(root.path(), used_space.clone()).await?;
 
     let id = Id(new_rng().gen());
     match chunk_store.get(&id) {
@@ -238,7 +238,7 @@ async fn keys() -> Result<()> {
 
     let root = temp_dir()?;
     let used_space = UsedSpace::new(u64::MAX);
-    let mut chunk_store = ChunkStore::new(root.path(), used_space.clone()).await?;
+    let mut chunk_store = DataStore::new(root.path(), used_space.clone()).await?;
 
     for (index, (data, _)) in chunks.data_and_sizes.iter().enumerate() {
         let id = Id(index as u64);

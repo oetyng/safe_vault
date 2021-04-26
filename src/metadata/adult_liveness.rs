@@ -9,8 +9,8 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use itertools::Itertools;
-use sn_data_types::BlobAddress;
-use sn_messaging::{client::BlobWrite, EndUser, MessageId};
+use sn_data_types::ChunkAddress;
+use sn_messaging::{client::ChunkWrite, EndUser, MessageId};
 use sn_routing::XorName;
 use std::collections::hash_map::Entry;
 
@@ -20,12 +20,12 @@ const NEIGHBOUR_COUNT: usize = 2;
 #[derive(Clone)]
 enum Operation {
     Read {
-        address: BlobAddress,
+        address: ChunkAddress,
         origin: EndUser,
         targets: BTreeSet<XorName>,
     },
     Write {
-        blob_write: Box<BlobWrite>,
+        chunk_write: Box<ChunkWrite>,
         origin: EndUser,
         targets: BTreeSet<XorName>,
     },
@@ -51,13 +51,13 @@ impl AdultLiveness {
     pub fn new_write(
         &mut self,
         msg_id: MessageId,
-        blob_write: BlobWrite,
+        chunk_write: ChunkWrite,
         origin: EndUser,
         targets: BTreeSet<XorName>,
     ) -> bool {
         let new_operation = if let Entry::Vacant(entry) = self.ops.entry(msg_id) {
             let _ = entry.insert(Operation::Write {
-                blob_write: Box::new(blob_write),
+                chunk_write: Box::new(chunk_write),
                 origin,
                 targets: targets.clone(),
             });
@@ -76,7 +76,7 @@ impl AdultLiveness {
     pub fn new_read(
         &mut self,
         msg_id: MessageId,
-        address: BlobAddress,
+        address: ChunkAddress,
         origin: EndUser,
         targets: BTreeSet<XorName>,
     ) -> bool {
@@ -139,11 +139,11 @@ impl AdultLiveness {
         &mut self,
         correlation_id: MessageId,
         src: XorName,
-    ) -> Option<BlobWrite> {
+    ) -> Option<ChunkWrite> {
         let op = self.ops.get(&correlation_id).cloned();
         self.remove_target(correlation_id, src);
         op.and_then(|op| match op {
-            Operation::Write { blob_write, .. } => Some(*blob_write),
+            Operation::Write { chunk_write, .. } => Some(*chunk_write),
             Operation::Read { .. } => None,
         })
     }
@@ -152,7 +152,7 @@ impl AdultLiveness {
         &mut self,
         correlation_id: MessageId,
         src: XorName,
-    ) -> Option<(BlobAddress, EndUser)> {
+    ) -> Option<(ChunkAddress, EndUser)> {
         let op = self.ops.get(&correlation_id).cloned();
         self.remove_target(correlation_id, src);
         op.and_then(|op| match op {

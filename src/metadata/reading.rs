@@ -9,12 +9,12 @@
 //! Read operations on data.
 
 use super::{
-    blob_records::BlobRecords, elder_stores::ElderStores, map_storage::MapStorage,
+    chunk_records::ChunkRecords, elder_stores::ElderStores, map_storage::MapStorage,
     register_storage::RegisterStorage, sequence_storage::SequenceStorage,
 };
 use crate::{node_ops::NodeDuty, Result};
 use sn_messaging::{
-    client::{BlobRead, DataQuery, MapRead, RegisterRead, SequenceRead},
+    client::{ChunkRead, DataQuery, MapRead, RegisterRead, SequenceRead},
     EndUser, MessageId,
 };
 
@@ -26,16 +26,16 @@ pub(super) async fn get_result(
 ) -> Result<NodeDuty> {
     use DataQuery::*;
     match &query {
-        Blob(read) => blob(read, stores.blob_records_mut(), msg_id, origin).await,
+        Chunk(read) => chunk(read, stores.chunk_records_mut(), msg_id, origin).await,
         Map(read) => map(read, stores.map_storage(), msg_id, origin).await,
         Sequence(read) => sequence(read, stores.sequence_storage(), msg_id, origin).await,
         Register(read) => register(read, stores.register_storage(), msg_id, origin).await,
     }
 }
 
-async fn blob(
-    read: &BlobRead,
-    register: &mut BlobRecords,
+async fn chunk(
+    read: &ChunkRead,
+    register: &mut ChunkRecords,
     msg_id: MessageId,
     origin: EndUser,
 ) -> Result<NodeDuty> {

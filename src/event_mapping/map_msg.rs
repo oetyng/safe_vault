@@ -326,7 +326,7 @@ fn match_node_msg(msg: Message, origin: SrcLocation) -> NodeDuty {
             response,
             correlation_id,
             ..
-        } if matches!(response, QueryResponse::GetBlob(_)) => NodeDuty::RecordAdultReadLiveness {
+        } if matches!(response, QueryResponse::GetChunk(_)) => NodeDuty::RecordAdultReadLiveness {
             response: response.clone(),
             correlation_id: *correlation_id,
             src: origin.name(),

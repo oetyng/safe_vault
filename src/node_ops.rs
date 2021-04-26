@@ -9,11 +9,11 @@
 #[cfg(feature = "simulated-payouts")]
 use sn_data_types::Transfer;
 use sn_data_types::{
-    ActorHistory, Blob, BlobAddress, CreditAgreementProof, NodeAge, PublicKey, RewardAccumulation,
-    RewardProposal, SignedTransfer, TransferAgreementProof,
+    ActorHistory, Chunk, ChunkAddress, CreditAgreementProof, NodeAge, PublicKey,
+    RewardAccumulation, RewardProposal, SignedTransfer, TransferAgreementProof,
 };
 use sn_messaging::{
-    client::{BlobRead, BlobWrite, CmdError, DataExchange, Message, QueryResponse},
+    client::{ChunkRead, ChunkWrite, CmdError, DataExchange, Message, QueryResponse},
     Aggregation, DstLocation, EndUser, MessageId, SrcLocation,
 };
 use sn_routing::Prefix;
@@ -79,12 +79,12 @@ pub enum NodeDuty {
         origin: SrcLocation,
     },
     ReadChunk {
-        read: BlobRead,
+        read: ChunkRead,
         msg_id: MessageId,
         origin: EndUser,
     },
     WriteChunk {
-        write: BlobWrite,
+        write: ChunkWrite,
         msg_id: MessageId,
         origin: EndUser,
     },
@@ -204,15 +204,15 @@ pub enum NodeDuty {
         origin: EndUser,
     },
     ///
-    FinishReplication(Blob),
+    FinishReplication(Chunk),
     /// Receive a chunk that is being replicated.
     /// This is run at an Adult (the new holder).
-    ReplicateChunk(Blob),
+    ReplicateChunk(Chunk),
     /// Retrieve a chunk
     /// and send it back to to the requesting Elders
     /// for them to replicate it on new nodes.
     ReturnChunkToElders {
-        address: BlobAddress,
+        address: ChunkAddress,
         id: MessageId,
         section: XorName,
     },

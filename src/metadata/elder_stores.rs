@@ -7,7 +7,7 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use super::{
-    blob_records::BlobRecords, map_storage::MapStorage, register_storage::RegisterStorage,
+    chunk_records::ChunkRecords, map_storage::MapStorage, register_storage::RegisterStorage,
     sequence_storage::SequenceStorage,
 };
 use crate::{Error, Result};
@@ -16,7 +16,7 @@ use sn_messaging::client::DataExchange;
 /// The various data type stores,
 /// that are only managed at Elders.
 pub(super) struct ElderStores {
-    blob_records: BlobRecords,
+    chunk_records: ChunkRecords,
     map_storage: MapStorage,
     sequence_storage: SequenceStorage,
     register_storage: RegisterStorage,
@@ -24,13 +24,13 @@ pub(super) struct ElderStores {
 
 impl ElderStores {
     pub fn new(
-        blob_records: BlobRecords,
+        chunk_records: ChunkRecords,
         map_storage: MapStorage,
         sequence_storage: SequenceStorage,
         register_storage: RegisterStorage,
     ) -> Self {
         Self {
-            blob_records,
+            chunk_records,
             map_storage,
             sequence_storage,
             register_storage,
@@ -49,8 +49,8 @@ impl ElderStores {
         &self.register_storage
     }
 
-    pub fn blob_records_mut(&mut self) -> &mut BlobRecords {
-        &mut self.blob_records
+    pub fn chunk_records_mut(&mut self) -> &mut ChunkRecords {
+        &mut self.chunk_records
     }
 
     pub fn map_storage_mut(&mut self) -> &mut MapStorage {
@@ -67,12 +67,12 @@ impl ElderStores {
 
     // NB: Not yet including Register metadata.
     pub async fn get_all_data(&self) -> Result<DataExchange> {
-        // Prepare blob_records, map and sequence data
-        let blob_data = self.blob_records.get_all_data().await?;
+        // Prepare chunk_records, map and sequence data
+        let chunk_data = self.chunk_records.get_all_data().await?;
         let map_data = self.map_storage.get_all_data()?;
         let seq_data = self.sequence_storage.get_all_data()?;
         Ok(DataExchange {
-            blob_data,
+            chunk_data,
             map_data,
             seq_data,
         })
@@ -81,7 +81,7 @@ impl ElderStores {
     pub async fn update(&mut self, data: DataExchange) -> Result<(), Error> {
         self.map_storage.update(data.map_data).await?;
         self.sequence_storage.update(data.seq_data).await?;
-        self.blob_records.update(data.blob_data).await?;
+        self.chunk_records.update(data.chunk_data).await?;
         Ok(())
     }
 }

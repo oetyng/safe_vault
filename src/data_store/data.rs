@@ -6,17 +6,15 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use super::chunk::{Chunk, ChunkId};
-use sn_data_types::{Blob, BlobAddress};
+use crate::to_db_key::ToDbKey;
+use serde::{de::DeserializeOwned, Serialize};
+use xor_name::XorName;
 
-impl Chunk for Blob {
-    type Id = BlobAddress;
-    fn id(&self) -> &Self::Id {
-        match self {
-            Blob::Public(ref chunk) => chunk.address(),
-            Blob::Private(ref chunk) => chunk.address(),
-        }
-    }
+pub(crate) trait Data: Serialize + DeserializeOwned {
+    type Id: DataId;
+    fn id(&self) -> &Self::Id;
 }
 
-impl ChunkId for BlobAddress {}
+pub(crate) trait DataId: ToDbKey + PartialEq + Eq + DeserializeOwned {}
+
+impl DataId for XorName {}

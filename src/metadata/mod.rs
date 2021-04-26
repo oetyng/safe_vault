@@ -8,7 +8,7 @@
 
 mod adult_liveness;
 pub mod adult_reader;
-mod blob_records;
+mod chunk_records;
 mod elder_stores;
 mod map_storage;
 mod reading;
@@ -18,13 +18,13 @@ mod writing;
 
 use self::adult_reader::AdultReader;
 use super::node_ops::NodeDuty;
-use crate::{capacity::ChunkHolderDbs, chunk_store::UsedSpace, node_ops::NodeDuties, Result};
-use blob_records::BlobRecords;
+use crate::{capacity::ChunkHolderDbs, data_store::UsedSpace, node_ops::NodeDuties, Result};
+use chunk_records::ChunkRecords;
 use elder_stores::ElderStores;
 use map_storage::MapStorage;
 use register_storage::RegisterStorage;
 use sequence_storage::SequenceStorage;
-use sn_data_types::{Blob, PublicKey};
+use sn_data_types::{Chunk, PublicKey};
 use sn_messaging::{
     client::{CmdError, DataCmd, DataExchange, DataQuery, QueryResponse},
     EndUser, MessageId,
@@ -52,12 +52,12 @@ impl Metadata {
         dbs: ChunkHolderDbs,
         reader: AdultReader,
     ) -> Result<Self> {
-        let blob_records = BlobRecords::new(dbs, reader);
+        let chunk_records = ChunkRecords::new(dbs, reader);
         let map_storage = MapStorage::new(path, used_space.clone()).await?;
         let sequence_storage = SequenceStorage::new(path, used_space.clone()).await?;
         let register_storage = RegisterStorage::new(path, used_space.clone()).await?;
         let elder_stores = ElderStores::new(
-            blob_records,
+            chunk_records,
             map_storage,
             sequence_storage,
             register_storage,
@@ -81,7 +81,7 @@ impl Metadata {
         src: XorName,
     ) -> Result<NodeDuty> {
         self.elder_stores
-            .blob_records_mut()
+            .chunk_records_mut()
             .record_adult_write_liveness(correlation_id, result, src)
             .await
     }
@@ -93,14 +93,14 @@ impl Metadata {
         src: XorName,
     ) -> Result<NodeDuty> {
         self.elder_stores
-            .blob_records_mut()
+            .chunk_records_mut()
             .record_adult_read_liveness(correlation_id, result, src)
             .await
     }
 
     pub async fn retain_members_only(&mut self, members: Vec<XorName>) -> Result<()> {
         self.elder_stores
-            .blob_records_mut()
+            .chunk_records_mut()
             .retain_members_only(members)
             .await?;
         Ok(())
@@ -118,7 +118,7 @@ impl Metadata {
     /// Adds a given node to the list of full nodes.
     pub async fn increase_full_node_count(&mut self, node_id: PublicKey) -> Result<()> {
         self.elder_stores
-            .blob_records_mut()
+            .chunk_records_mut()
             .increase_full_node_count(node_id)
             .await
     }
@@ -129,16 +129,16 @@ impl Metadata {
     // When receiving the chunk from remaining holders, we ask new holders to store it.
     pub async fn remove_and_replicate_chunks(&mut self, node: XorName) -> Result<NodeDuties> {
         self.elder_stores
-            .blob_records_mut()
+            .chunk_records_mut()
             .remove_and_replicate_chunks(node)
             .await
     }
 
     // When receiving the chunk from remaining holders, we ask new holders to store it.
-    pub async fn finish_chunk_replication(&mut self, data: Blob) -> Result<NodeDuty> {
+    pub async fn finish_chunk_replication(&mut self, chunk: Chunk) -> Result<NodeDuty> {
         self.elder_stores
-            .blob_records_mut()
-            .replicate_chunk(data)
+            .chunk_records_mut()
+            .replicate_chunk(chunk)
             .await
     }
 
