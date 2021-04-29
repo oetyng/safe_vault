@@ -10,7 +10,7 @@ mod map_msg;
 
 use super::node_ops::NodeDuty;
 use crate::network::Network;
-use log::{debug, error, info, trace};
+use log::{debug, error, info};
 use map_msg::{map_node_msg, match_user_sent_msg};
 use sn_data_types::PublicKey;
 use sn_messaging::{client::Message, SrcLocation};
@@ -117,11 +117,11 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
                                 if elders.key == pk_set.public_key() {
                                     break;
                                 } else {
-                                    trace!("******Elders changed, we are still Elder but we seem to be lagging the DKG...");
+                                    debug!("******Elders changed, we are still Elder but we seem to be lagging the DKG...");
                                 }
                             }
                             Err(e) => {
-                                trace!(
+                                debug!(
                                     "******Elders changed, should NOT be an error here...! ({:?})",
                                     e
                                 );
@@ -132,7 +132,7 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
                     }
                     // -- ugly temporary until fixed in routing --
 
-                    trace!("******Elders changed, we are still Elder");
+                    debug!("******Elders changed, we are still Elder");
                     Mapping::Ok {
                         op: NodeDuty::EldersChanged {
                             our_prefix: elders.prefix,
@@ -148,19 +148,19 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
                     let mut sanity_counter = 0_i32;
                     while network_api.our_public_key_set().await.is_err() {
                         if sanity_counter > 240 {
-                            trace!("******Elders changed, we were promoted, but no key share found, so skip this..");
+                            debug!("******Elders changed, we were promoted, but no key share found, so skip this..");
                             return Mapping::Ok {
                                 op: NodeDuty::NoOp,
                                 ctx: None,
                             };
                         }
                         sanity_counter += 1;
-                        trace!("******Elders changed, we are promoted, but still no key share..");
+                        debug!("******Elders changed, we are promoted, but still no key share..");
                         sleep(Duration::from_millis(500))
                     }
                     // -- ugly temporary until fixed in routing --
 
-                    trace!("******Elders changed, we are promoted");
+                    debug!("******Elders changed, we are promoted");
 
                     Mapping::Ok {
                         op: NodeDuty::EldersChanged {
@@ -191,7 +191,7 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
         RoutingEvent::MemberJoined { previous_name, .. } => {
             log_network_stats(network_api).await;
             let op = if previous_name.is_some() {
-                trace!("A relocated node has joined the section.");
+                debug!("A relocated node has joined the section.");
                 // Switch joins_allowed off a new adult joining.
                 NodeDuty::SetNodeJoinsAllowed(false)
             } else if network_api.our_prefix().await.is_empty() {

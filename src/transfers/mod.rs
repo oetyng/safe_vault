@@ -19,7 +19,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     utils, Error, Result,
 };
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, info, warn};
 use replica_signing::ReplicaSigningImpl;
 #[cfg(feature = "simulated-payouts")]
 use sn_data_types::Transfer;
@@ -327,7 +327,6 @@ impl Transfers {
         msg_id: MessageId,
         origin: SrcLocation,
     ) -> Result<NodeDuty> {
-        trace!("Handling GetHistory");
         // validate signature
         let result = self
             .replicas

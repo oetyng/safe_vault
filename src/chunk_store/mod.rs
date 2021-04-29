@@ -20,7 +20,7 @@ mod used_space;
 use crate::error::{Error, Result};
 use crate::utils;
 use chunk::{Chunk, ChunkId};
-use log::{info, trace};
+use log::{debug, info};
 use sn_data_types::{register::Register, Blob, Map, Sequence};
 use std::{
     fs::{self, DirEntry, File, Metadata},
@@ -100,21 +100,24 @@ impl<T: Chunk> ChunkStore<T> {
     ///
     /// If a chunk with the same id already exists, it will be overwritten.
     pub async fn put(&mut self, chunk: &T) -> Result<()> {
-        info!("Writing chunk");
+        debug!("Writing chunk");
         let serialised_chunk = utils::serialise(chunk)?;
-        let consumed_space = serialised_chunk.len() as u64;
+        let required_space = serialised_chunk.len() as u64;
 
-        info!("consumed space: {:?}", consumed_space);
-        info!("max : {:?}", self.used_space.max_capacity().await);
-        info!("use space total : {:?}", self.used_space.total().await);
+        debug!("Required space: {:?}", required_space);
+        debug!(
+            "Configured max capacity: {:?}",
+            self.used_space.max_capacity().await
+        );
+        debug!("Used space: {:?}", self.used_space.total().await);
 
         let file_path = self.file_path(chunk.id())?;
         self.do_delete(&file_path).await?;
 
         // pre-reserve space
-        self.used_space.increase(self.id, consumed_space).await?;
-        trace!(
-            "use space total after add: {:?}",
+        self.used_space.increase(self.id, required_space).await?;
+        debug!(
+            "Used space after reserving the required space: {:?}",
             self.used_space.total().await
         );
 
@@ -125,12 +128,12 @@ impl<T: Chunk> ChunkStore<T> {
 
         match res {
             Ok(_) => {
-                info!("Writing chunk succeeded!");
+                debug!("Writing chunk succeeded!");
                 Ok(())
             }
             Err(e) => {
-                info!("Writing chunk failed!");
-                self.used_space.decrease(self.id, consumed_space).await?;
+                debug!("Writing chunk failed!");
+                self.used_space.decrease(self.id, required_space).await?;
                 Err(e.into())
             }
         }

@@ -8,14 +8,14 @@
 
 use crate::{network::Network, Result};
 use crate::{node_ops::OutgoingMsg, Error};
-use log::{error, trace};
+use log::{debug, error};
 use sn_messaging::{client::Message, Aggregation, DstLocation, Itinerary, SrcLocation};
 use sn_routing::XorName;
 use std::collections::BTreeSet;
 
 pub(crate) async fn send(msg: OutgoingMsg, network: &Network) -> Result<()> {
     let our_prefix = network.our_prefix().await;
-    trace!("{:?}, Sending msg: {:?}", our_prefix, msg);
+    debug!("{:?}, Sending msg: {:?}", our_prefix, msg);
     let src = if msg.section_source {
         SrcLocation::Section(our_prefix.name())
     } else {
@@ -44,11 +44,9 @@ pub(crate) async fn send_to_nodes(
     network: &Network,
 ) -> Result<()> {
     let our_prefix = network.our_prefix().await;
-    trace!(
+    debug!(
         "{:?}, Sending msg to nodes: {:?}: {:?}",
-        our_prefix,
-        targets,
-        msg
+        our_prefix, targets, msg
     );
 
     let name = network.our_name().await;
