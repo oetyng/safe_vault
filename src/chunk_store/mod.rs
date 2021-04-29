@@ -20,7 +20,7 @@ mod used_space;
 use crate::error::{Error, Result};
 use crate::utils;
 use chunk::{Chunk, ChunkId};
-use log::{debug, info};
+use log::debug;
 use sn_data_types::{register::Register, Blob, Map, Sequence};
 use std::{
     fs::{self, DirEntry, File, Metadata},
@@ -152,9 +152,9 @@ impl<T: Chunk> ChunkStore<T> {
         let used = self.total_used_space().await;
         let total = self.used_space.max_capacity().await;
         let used_space_ratio = used as f64 / total as f64;
-        info!("Used space: {:?}", used);
-        info!("Total space: {:?}", total);
-        info!("Used space ratio: {:?}", used_space_ratio);
+        debug!("Used space: {:?}", used);
+        debug!("Total space: {:?}", total);
+        debug!("Used space ratio: {:?}", used_space_ratio);
         used_space_ratio
     }
 

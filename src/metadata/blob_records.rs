@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::{debug, info};
+use log::debug;
 use sn_data_types::{Blob, BlobAddress, PublicKey};
 use sn_messaging::{
     client::{
@@ -114,8 +114,8 @@ impl BlobRecords {
 
     /// Adds a given node to the list of full nodes.
     pub async fn increase_full_node_count(&mut self, node_id: PublicKey) -> Result<()> {
-        info!("No. of Full Nodes: {:?}", self.full_nodes().await);
-        info!("Increasing full_node count");
+        debug!("No. of Full Nodes: {:?}", self.full_nodes().await);
+        debug!("Increasing full_node count");
         let _ = self
             .adult_storage_info
             .full_adults
@@ -128,8 +128,8 @@ impl BlobRecords {
     /// Removes a given node from the list of full nodes.
     #[allow(unused)] // TODO: Remove node from full list at 50% ?
     async fn decrease_full_node_count_if_present(&mut self, node_name: XorName) -> Result<()> {
-        info!("No. of Full Nodes: {:?}", self.full_nodes().await);
-        info!("Checking if {:?} is present as full_node", node_name);
+        debug!("No. of Full Nodes: {:?}", self.full_nodes().await);
+        debug!("Checking if {:?} is present as full_node", node_name);
         match self
             .adult_storage_info
             .full_adults
@@ -138,11 +138,11 @@ impl BlobRecords {
             .remove(&node_name)
         {
             true => {
-                info!("Node present in DB, remove successful");
+                debug!("Node present in DB, remove successful");
                 Ok(())
             }
             false => {
-                info!("Node not found on full_nodes db");
+                debug!("Node not found on full_nodes db");
                 Ok(())
             }
         }
@@ -166,7 +166,7 @@ impl BlobRecords {
             .cloned()
             .collect::<BTreeSet<_>>();
 
-        info!("Storing {} copies of the data", target_holders.len());
+        debug!("Storing {} copies of the data", target_holders.len());
 
         let blob_write = BlobWrite::New(data);
 
@@ -188,7 +188,7 @@ impl BlobRecords {
                 aggregation: Aggregation::AtDestination,
             })
         } else {
-            info!(
+            debug!(
                 "Operation with MessageId {:?} is already in progress",
                 msg_id
             );
@@ -231,7 +231,7 @@ impl BlobRecords {
                     }))
                 }
             } else {
-                info!(
+                debug!(
                     "AdultWrite operation {:?} MessageId {:?} at {:?} was successful",
                     blob_write, correlation_id, src
                 );
@@ -342,7 +342,7 @@ impl BlobRecords {
                 aggregation: Aggregation::AtDestination,
             })
         } else {
-            info!(
+            debug!(
                 "Operation with MessageId {:?} is already in progress",
                 msg_id
             );
@@ -363,7 +363,7 @@ impl BlobRecords {
         // deterministic msg id for aggregation
         let msg_id = MessageId::from_content(&(*data.name(), owner, target_holders.clone()))?;
 
-        info!(
+        debug!(
             "Republishing chunk {:?} to holders {:?} with MessageId {:?}",
             data.address(),
             &target_holders,
@@ -385,7 +385,7 @@ impl BlobRecords {
                 aggregation: Aggregation::AtDestination,
             })
         } else {
-            info!("Skipping chunk republish since it's already in progress");
+            debug!("Skipping chunk republish since it's already in progress");
             Ok(NodeDuty::NoOp)
         }
     }
@@ -433,7 +433,7 @@ impl BlobRecords {
                 aggregation: Aggregation::None,
             })
         } else {
-            info!(
+            debug!(
                 "Operation with MessageId {:?} is already in progress",
                 msg_id
             );

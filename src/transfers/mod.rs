@@ -19,7 +19,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     utils, Error, Result,
 };
-use log::{debug, info};
+use log::debug;
 use replica_signing::ReplicaSigningImpl;
 #[cfg(feature = "simulated-payouts")]
 use sn_data_types::Transfer;
@@ -129,7 +129,7 @@ impl Transfers {
             ))
         } else {
             let store_cost = self.rate_limit.from(bytes).await;
-            info!("StoreCost for {:?} bytes: {}", bytes, store_cost);
+            debug!("StoreCost for {:?} bytes: {}", bytes, store_cost);
             Ok((bytes, store_cost, self.section_wallet_id()))
         };
 
@@ -205,8 +205,8 @@ impl Transfers {
         match result {
             Ok(_) => {
                 let total_cost = self.rate_limit.from(num_bytes).await;
-                info!("Payment: registration and propagation succeeded. (Store cost: {}, paid amount: {}.)", total_cost, payment.amount());
-                info!(
+                debug!("Payment: registration and propagation succeeded. (Store cost: {}, paid amount: {}.)", total_cost, payment.amount());
+                debug!(
                     "Section balance: {}",
                     self.replicas.balance(payment.recipient()).await?
                 );
@@ -233,7 +233,7 @@ impl Transfers {
                         aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
                     }));
                 }
-                info!("Payment: forwarding data..");
+                debug!("Payment: forwarding data..");
                 Ok(NodeDuty::Send(OutgoingMsg {
                     msg: Message::NodeCmd {
                         cmd: NodeCmd::Metadata {

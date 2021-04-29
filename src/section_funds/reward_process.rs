@@ -19,7 +19,7 @@ use crate::{
     node_ops::{NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::{debug, info};
+use log::debug;
 use sn_data_types::{
     Credit, NodeAge, PublicKey, RewardAccumulation, RewardProposal, Signature, Signing, Token,
 };
@@ -207,7 +207,7 @@ impl RewardProcess {
                 }
 
                 if let Some(rewards) = proposal_details.pending_agreements() {
-                    info!("******* there is an agreement for reward proposal.");
+                    debug!("******* there is an agreement for reward proposal.");
                     let rewards = rewards
                         .into_iter()
                         .map(|(_, signed_credit)| CreditAccumulation {
@@ -304,7 +304,7 @@ impl RewardProcess {
                 }
 
                 if let Some(credit_proofs) = our_acc.pending_agreements() {
-                    info!("******* there is an agreement for reward accumulation.");
+                    debug!("******* there is an agreement for reward accumulation.");
                     self.stage = RewardStage::Completed(credit_proofs);
                 } else {
                     self.stage = RewardStage::AccumulatingCredits(our_acc);

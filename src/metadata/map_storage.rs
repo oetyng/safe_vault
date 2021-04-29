@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::{debug, info};
+use log::debug;
 use sn_data_types::{
     Error as DtError, Map, MapAction, MapAddress, MapEntryActions, MapPermissionSet, MapValue,
     PublicKey, Result as NdResult,
@@ -169,11 +169,11 @@ impl MapStorage {
         let result = match self.chunks.get(&address) {
             Ok(map) => match map.check_is_owner(origin.id()) {
                 Ok(()) => {
-                    info!("Deleting Map");
+                    debug!("Deleting Map");
                     self.chunks.delete(&address).await
                 }
                 Err(_e) => {
-                    info!("Error: Delete Map called by non-owner");
+                    debug!("Error: Delete Map called by non-owner");
                     Err(Error::NetworkData(DtError::AccessDenied(*origin.id())))
                 }
             },
@@ -497,7 +497,7 @@ impl MapStorage {
     ) -> Result<NodeDuty> {
         if let Err(error) = result {
             let messaging_error = convert_to_error_message(error)?;
-            info!("MapStorage: Writing chunk FAILED!");
+            debug!("MapStorage: Writing chunk FAILED!");
 
             Ok(NodeDuty::Send(OutgoingMsg {
                 msg: Message::CmdError {
@@ -510,7 +510,7 @@ impl MapStorage {
                 aggregation: Aggregation::None, // TODO: to_be_aggregated: Aggregation::AtDestination,
             }))
         } else {
-            info!("MapStorage: Writing chunk PASSED!");
+            debug!("MapStorage: Writing chunk PASSED!");
             Ok(NodeDuty::NoOp)
         }
     }

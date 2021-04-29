@@ -14,7 +14,7 @@ use crate::{
     Result,
 };
 use chunk_storage::ChunkStorage;
-use log::info;
+use log::debug;
 use sn_data_types::{Blob, BlobAddress};
 use sn_messaging::{
     client::{BlobRead, BlobWrite, CmdError, Message, NodeEvent},
@@ -73,7 +73,7 @@ impl Chunks {
     }
 
     pub async fn check_storage(&self) -> Result<NodeDuties> {
-        info!("Checking used storage");
+        debug!("Checking used storage");
         if self.chunk_storage.used_space_ratio().await > MAX_STORAGE_USAGE_RATIO {
             Ok(NodeDuties::from(NodeDuty::ReachingMaxCapacity))
         } else {

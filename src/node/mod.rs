@@ -22,7 +22,7 @@ use crate::{
     state_db::{get_reward_pk, store_new_reward_keypair},
     Config, Error, Result,
 };
-use log::{debug, info};
+use log::debug;
 use rand::rngs::OsRng;
 use role::{AdultRole, Role};
 use sn_data_types::PublicKey;
@@ -119,6 +119,14 @@ impl Node {
     /// by client sending in a `Command` to free it.
     pub async fn run(&mut self) -> Result<()> {
         while let Some(event) = self.network_events.next().await {
+            debug!(
+                "New RoutingEvent received. Current role: {}, section prefix: {:?}, age: {}, node name: {}",
+                self.role,
+                self.our_prefix().await,
+                self.network_api.age().await,
+                self.our_name().await
+            );
+
             // tokio spawn should only be needed around intensive tasks, ie sign/verify
             match map_routing_event(event, &self.network_api).await {
                 Mapping::Ok { op, ctx } => self.process_while_any(op, ctx).await,
@@ -148,7 +156,7 @@ impl Node {
 
 fn handle_error(err: LazyError) {
     use std::error::Error;
-    info!(
+    debug!(
         "unimplemented: Handle errors. This should be return w/ lazyError to sender. {:?}",
         err
     );
@@ -162,7 +170,7 @@ fn try_handle_error(err: Error, ctx: Option<MsgContext>) {
     use std::error::Error;
     if let Some(source) = err.source() {
         if let Some(_ctx) = ctx {
-            info!(
+            debug!(
                 "unimplemented: Handle errors. This should be return w/ lazyError to sender. {:?}",
                 err
             );
@@ -174,7 +182,7 @@ fn try_handle_error(err: Error, ctx: Option<MsgContext>) {
             );
         }
     } else {
-        info!("unimplemented: Handle errors. {:?}", err);
+        debug!("unimplemented: Handle errors. {:?}", err);
     }
 }
 

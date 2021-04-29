@@ -18,7 +18,7 @@ use crate::{
     },
     Node, Result,
 };
-use log::info;
+use log::debug;
 use sn_data_types::{ActorHistory, NodeAge, PublicKey};
 use sn_messaging::client::DataExchange;
 use sn_routing::XorName;
@@ -86,7 +86,7 @@ impl Node {
         let elder = self.role.as_elder_mut()?;
 
         if elder.received_initial_sync {
-            info!("We are already received the initial sync from our section. Ignoring update");
+            debug!("We are already received the initial sync from our section. Ignoring update");
             return Ok(NodeDuty::NoOp);
         }
 
@@ -105,7 +105,7 @@ impl Node {
         let no_wallet_found = node_wallets.get(&node_id).is_none();
 
         if no_wallet_found {
-            info!(
+            debug!(
                 "Registering wallet of node: {} (since not found in received state)",
                 node_id,
             );

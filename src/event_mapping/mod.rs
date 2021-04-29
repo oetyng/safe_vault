@@ -10,7 +10,7 @@ mod map_msg;
 
 use super::node_ops::NodeDuty;
 use crate::network::Network;
-use log::{debug, error, info};
+use log::debug;
 use map_msg::{map_node_msg, match_user_sent_msg};
 use sn_data_types::PublicKey;
 use sn_messaging::{client::Message, SrcLocation};
@@ -41,7 +41,7 @@ pub struct LazyError {
 
 /// Process any routing event
 pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Mapping {
-    info!("Handling RoutingEvent: {:?}", event);
+    debug!("Handling RoutingEvent: {:?}", event);
     match event {
         RoutingEvent::MessageReceived {
             content, src, dst, ..
@@ -205,7 +205,7 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
             // Check our current status
             let age = network_api.age().await;
             if age > MIN_AGE {
-                info!("Relocated, our Age: {:?}", age);
+                debug!("Relocated, our Age: {:?}", age);
             }
             Mapping::Ok {
                 op: NodeDuty::NoOp,

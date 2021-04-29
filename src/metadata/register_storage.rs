@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::info;
+use log::debug;
 use sn_data_types::register::{Action, Address, Entry, Register, RegisterOp, User};
 use sn_messaging::{
     client::{CmdError, Message, QueryResponse, RegisterRead, RegisterWrite},
@@ -62,11 +62,11 @@ impl RegisterStorage {
         origin: EndUser,
     ) -> Result<NodeDuty> {
         use RegisterWrite::*;
-        info!("Matching Register Write");
+        debug!("Matching Register Write");
         match write {
             New(data) => self.store(&data, msg_id, origin).await,
             Edit(operation) => {
-                info!("Editing Register");
+                debug!("Editing Register");
                 self.edit(operation, msg_id, origin).await
             }
             Delete(address) => self.delete(address, msg_id, origin).await,
@@ -256,7 +256,7 @@ impl RegisterStorage {
         origin: EndUser,
     ) -> Result<NodeDuty> {
         let address = write_op.address;
-        info!("Editing Register chunk");
+        debug!("Editing Register chunk");
         let result = self
             .edit_chunk(address, Action::Write, origin, move |mut register| {
                 register.apply_op(write_op)?;
@@ -265,9 +265,9 @@ impl RegisterStorage {
             .await;
 
         if result.is_ok() {
-            info!("Editing Register chunk SUCCESSFUL!");
+            debug!("Editing Register chunk SUCCESSFUL!");
         } else {
-            info!("Editing Register chunk FAILED!");
+            debug!("Editing Register chunk FAILED!");
         }
 
         self.ok_or_error(result, msg_id, origin).await
@@ -283,10 +283,10 @@ impl RegisterStorage {
     where
         F: FnOnce(Register) -> Result<Register>,
     {
-        info!("Getting Register chunk for Edit");
+        debug!("Getting Register chunk for Edit");
         let result = self.get_chunk(address, action, origin)?;
         let sequence = write_fn(result)?;
-        info!("Edited Register chunk successfully");
+        debug!("Edited Register chunk successfully");
         self.chunks.put(&sequence).await
     }
 
@@ -299,7 +299,7 @@ impl RegisterStorage {
         let error = match result {
             Ok(_) => return Ok(NodeDuty::NoOp),
             Err(error) => {
-                info!("Error on writing Register! {:?}", error);
+                debug!("Error on writing Register! {:?}", error);
                 convert_to_error_message(error)?
             }
         };

@@ -27,7 +27,7 @@
     unused_results
 )]
 
-use log::{self, debug, info};
+use log::{self, debug};
 use self_update::{cargo_crate_version, Status};
 use sn_node::{self, add_connection_info, set_connection_info, utils, Config, Node};
 use std::{io::Write, process};
@@ -103,7 +103,7 @@ async fn run_node() {
         Config::clap().get_name(),
         env!("CARGO_PKG_VERSION")
     );
-    info!("\n\n{}\n{}", message, "=".repeat(message.len()));
+    debug!("\n\n{}\n{}", message, "=".repeat(message.len()));
 
     let log = format!(
         "The network is not accepting nodes right now. Retrying after {} minutes",
@@ -115,7 +115,7 @@ async fn run_node() {
             Ok(node) => break node,
             Err(sn_node::Error::Routing(sn_routing::Error::TryJoinLater)) => {
                 println!("{}", log);
-                info!("{}", log);
+                debug!("{}", log);
                 tokio::time::sleep(tokio::time::Duration::from_secs(BOOTSTRAP_RETRY_TIME * 60))
                     .await;
             }
@@ -139,7 +139,7 @@ async fn run_node() {
         "Node PID: {:?}, prefix: {:?}, name: {}, connection info:\n{}",
         our_pid, node_prefix, node_name, our_conn_info_json,
     );
-    info!(
+    debug!(
         "Node PID: {:?}, prefix: {:?}, name: {}, connection info: {}",
         our_pid, node_prefix, node_name, our_conn_info_json,
     );
@@ -170,7 +170,7 @@ fn exit(exit_code: i32) {
 }
 
 fn update() -> Result<Status, Box<dyn (::std::error::Error)>> {
-    info!("Checking for updates...");
+    debug!("Checking for updates...");
     let target = self_update::get_target();
 
     let releases = self_update::backends::github::ReleaseList::configure()

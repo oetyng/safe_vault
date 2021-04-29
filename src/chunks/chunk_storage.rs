@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::{debug, info};
+use log::debug;
 use sn_data_types::{Blob, BlobAddress, DataAddress};
 use sn_messaging::{
     client::{CmdError, Error as ErrorMessage, Message, NodeEvent, QueryResponse},
@@ -60,7 +60,7 @@ impl ChunkStorage {
 
     async fn try_store(&mut self, data: &Blob) -> Result<()> {
         if self.chunks.has(data.address()) {
-            info!(
+            debug!(
                 "{}: Immutable chunk already exists, not storing: {:?}",
                 self,
                 data.address()
@@ -103,7 +103,7 @@ impl ChunkStorage {
     /// Stores a chunk that Elders sent to it for replication.
     pub async fn store_for_replication(&mut self, blob: Blob) -> Result<()> {
         if self.chunks.has(blob.address()) {
-            info!(
+            debug!(
                 "{}: Immutable chunk already exists, not storing: {:?}",
                 self,
                 blob.address()
@@ -127,7 +127,7 @@ impl ChunkStorage {
         origin: EndUser,
     ) -> Result<NodeDuty> {
         if !self.chunks.has(&address) {
-            info!("{}: Immutable chunk doesn't exist: {:?}", self, address);
+            debug!("{}: Immutable chunk doesn't exist: {:?}", self, address);
             return Ok(NodeDuty::NoOp);
         }
 

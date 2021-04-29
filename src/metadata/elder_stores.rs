@@ -11,7 +11,7 @@ use super::{
     sequence_storage::SequenceStorage,
 };
 use crate::{node_ops::NodeDuty, Error, Result};
-use log::info;
+use log::debug;
 use sn_messaging::{
     client::{DataCmd, DataExchange, DataQuery},
     EndUser, MessageId,
@@ -62,22 +62,22 @@ impl ElderStores {
         msg_id: MessageId,
         origin: EndUser,
     ) -> Result<NodeDuty> {
-        info!("Writing Data");
+        debug!("Writing Data");
         match cmd {
             DataCmd::Blob(write) => {
-                info!("Writing Blob");
+                debug!("Writing Blob");
                 self.blob_records.write(write, msg_id, origin).await
             }
             DataCmd::Map(write) => {
-                info!("Writing Map");
+                debug!("Writing Map");
                 self.map_storage.write(write, msg_id, origin).await
             }
             DataCmd::Sequence(write) => {
-                info!("Writing Sequence");
+                debug!("Writing Sequence");
                 self.sequence_storage.write(write, msg_id, origin).await
             }
             DataCmd::Register(write) => {
-                info!("Writing Register");
+                debug!("Writing Register");
                 self.register_storage.write(write, msg_id, origin).await
             }
         }

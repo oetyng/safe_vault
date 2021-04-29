@@ -11,7 +11,6 @@ use crate::{Error, Result};
 use bls::PublicKeySet;
 use dashmap::DashMap;
 use futures::lock::Mutex;
-use log::info;
 use sn_data_types::{
     ActorHistory, CreditAgreementProof, OwnerType, PublicKey, ReplicaEvent, SignedTransfer, Token,
     TransferAgreementProof, TransferPropagated, TransferRegistered, TransferValidated,
@@ -312,7 +311,7 @@ impl<T: ReplicaSigning> Replicas<T> {
         let wallet = self.load_wallet(&store, OwnerType::Single(id)).await?;
         match wallet.register(transfer_proof)? {
             None => {
-                info!("transfer already registered!");
+                debug!("transfer already registered!");
                 Err(Error::TransferAlreadyRegistered)
             }
             Some(event) => {

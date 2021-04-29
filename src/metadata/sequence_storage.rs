@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::{debug, info};
+use log::debug;
 use sn_data_types::{
     Error as DtError, Sequence, SequenceAction, SequenceAddress, SequenceEntry, SequenceIndex,
     SequenceOp, SequenceUser,
@@ -90,11 +90,11 @@ impl SequenceStorage {
         origin: EndUser,
     ) -> Result<NodeDuty> {
         use SequenceWrite::*;
-        info!("Matching Sequence Write");
+        debug!("Matching Sequence Write");
         match write {
             New(data) => self.store(&data, msg_id, origin).await,
             Edit(operation) => {
-                info!("Editing Sequence");
+                debug!("Editing Sequence");
                 self.edit(operation, msg_id, origin).await
             }
             Delete(address) => self.delete(address, msg_id, origin).await,
@@ -335,7 +335,7 @@ impl SequenceStorage {
         origin: EndUser,
     ) -> Result<NodeDuty> {
         let address = write_op.address;
-        info!("Editing Sequence chunk");
+        debug!("Editing Sequence chunk");
         let result = self
             .edit_chunk(
                 address,
@@ -348,9 +348,9 @@ impl SequenceStorage {
             )
             .await;
         if result.is_ok() {
-            info!("Editing Sequence chunk SUCCESSFUL!");
+            debug!("Editing Sequence chunk SUCCESSFUL!");
         } else {
-            info!("Editing Sequence chunk FAILEDDD!");
+            debug!("Editing Sequence chunk FAILEDDD!");
         }
         self.ok_or_error(result, msg_id, origin).await
     }
@@ -365,10 +365,10 @@ impl SequenceStorage {
     where
         F: FnOnce(Sequence) -> Result<Sequence>,
     {
-        info!("Getting Sequence chunk for Edit");
+        debug!("Getting Sequence chunk for Edit");
         let result = self.get_chunk(address, action, origin)?;
         let sequence = write_fn(result)?;
-        info!("Edited Sequence chunk successfully");
+        debug!("Edited Sequence chunk successfully");
         self.chunks.put(&sequence).await
     }
 
@@ -381,7 +381,7 @@ impl SequenceStorage {
         let error = match result {
             Ok(_) => return Ok(NodeDuty::NoOp),
             Err(error) => {
-                info!("Error on writing Sequence! {:?}", error);
+                debug!("Error on writing Sequence! {:?}", error);
                 convert_to_error_message(error)?
             }
         };

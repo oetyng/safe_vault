@@ -17,7 +17,7 @@ use crate::{
     section_funds::{reward_stage::RewardStage, Credits, SectionFunds},
     Error, Node, Result,
 };
-use log::{debug, info};
+use log::debug;
 use sn_messaging::{
     client::{Message, NodeQuery},
     Aggregation, DstLocation, MessageId,
@@ -45,7 +45,7 @@ impl Node {
                 newbie,
             } => {
                 if newbie {
-                    info!("Promoted to Elder on Churn");
+                    debug!("Promoted to Elder on Churn");
                     self.level_up().await?;
                     if self.network_api.our_prefix().await.is_empty()
                         && self.network_api.section_chain().await.len() <= ELDER_SIZE
@@ -55,7 +55,7 @@ impl Node {
                     }
                     Ok(vec![])
                 } else {
-                    info!("Updating our replicas on Churn");
+                    debug!("Updating our replicas on Churn");
                     self.update_replicas().await?;
                     let elder = self.role.as_elder_mut()?;
                     let msg_id =
@@ -89,11 +89,11 @@ impl Node {
                 newbie,
             } => {
                 if newbie {
-                    info!("Beginning split as Newbie");
+                    debug!("Beginning split as Newbie");
                     self.begin_split_as_newbie(our_key, our_prefix).await?;
                     Ok(vec![])
                 } else {
-                    info!("Beginning split as Oldie");
+                    debug!("Beginning split as Oldie");
                     self.begin_split_as_oldie(
                         our_prefix,
                         our_key,
@@ -115,9 +115,9 @@ impl Node {
                 Ok(vec![self.get_section_elders(msg_id, origin).await?])
             }
             NodeDuty::ReceiveRewardProposal(proposal) => {
-                info!("Handling Churn proposal as an Elder");
                 let elder = self.role.as_elder_mut()?;
-                let (churn_process, _) = elder.section_funds.as_churning_mut()?;
+                debug!("Handling Churn proposal as an Elder");
+                let (churn_process, _, _) = elder.section_funds.as_churning_mut()?;
                 Ok(vec![churn_process.receive_churn_proposal(proposal).await?])
             }
             NodeDuty::ReceiveRewardAccumulation(accumulation) => {
@@ -137,7 +137,7 @@ impl Node {
                     // update state
                     elder.section_funds = SectionFunds::KeepingNodeWallets(reward_wallets.clone());
                     let section_key = &self.network_api.section_public_key().await?;
-                    info!(
+                    debug!(
                         "COMPLETED SPLIT. New section: ({}). Total rewards paid: {}.",
                         section_key, reward_sum
                     );
@@ -182,7 +182,12 @@ impl Node {
                 }
             }
             NodeDuty::ProcessLostMember { name, .. } => {
-                info!("Member Lost: {:?}", name);
+                debug!("Member Lost: {:?}", name);
+                let mut ops = vec![];
+
+                debug!("Setting JoinsAllowed to `True` for replacing the member left");
+                ops.push(NodeDuty::SetNodeJoinsAllowed(true));
+
                 let elder = self.role.as_elder_mut()?;
                 elder.section_funds.remove_node_wallet(name);
                 Ok(vec![NodeDuty::SetNodeJoinsAllowed(true)])
@@ -198,7 +203,7 @@ impl Node {
                     .await?,
             ]),
             NodeDuty::LevelDown => {
-                info!("Getting Demoted");
+                debug!("Getting Demoted");
                 let capacity = self.used_space.max_capacity().await;
                 self.role = Role::Adult(AdultRole {
                     chunks: Chunks::new(self.node_info.root_dir.as_path(), capacity).await?,
@@ -281,8 +286,8 @@ impl Node {
                 let adult = self.role.as_adult_mut()?;
                 Ok(vec![adult.chunks.write(&write, msg_id, origin).await?])
             }
-            NodeDuty::ProcessRepublish { chunk, msg_id, .. } => {
-                info!("Processing republish with MessageId: {:?}", msg_id);
+            NodeDuty::ProcessRepublish { chunk, msg_id } => {
+                debug!("Processing republish with MessageId: {:?}", msg_id);
                 let elder = self.role.as_elder_mut()?;
                 Ok(vec![elder.meta_data.republish_chunk(chunk).await?])
             }

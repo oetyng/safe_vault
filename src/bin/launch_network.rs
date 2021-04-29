@@ -28,7 +28,7 @@
 )]
 
 use dirs_next::home_dir;
-use log::{debug, info};
+use log::debug;
 use sn_launch_tool::run_with;
 use std::{
     fs::{create_dir_all, remove_dir_all},
@@ -93,7 +93,7 @@ fn get_node_bin_path(node_path: Option<PathBuf>) -> Result<PathBuf, String> {
 
 /// Uses SNLT to create a local network of nodes
 pub async fn run_network() -> Result<(), String> {
-    info!("Starting local network");
+    debug!("Starting local network");
     let verbosity = 4;
     let node_path = Some(PathBuf::from("./target/release"));
     let node_path = get_node_bin_path(node_path)?;
@@ -113,7 +113,7 @@ pub async fn run_network() -> Result<(), String> {
         })?;
     }
     let arg_node_log_dir = node_log_dir.display().to_string();
-    info!("Storing nodes' generated data at {}", arg_node_log_dir);
+    debug!("Storing nodes' generated data at {}", arg_node_log_dir);
 
     let node_count = std::env::var("NODE_COUNT").unwrap_or_else(|_| NODE_COUNT.to_string());
 
@@ -147,7 +147,7 @@ pub async fn run_network() -> Result<(), String> {
     let mut verbosity_arg = String::from("-");
     if verbosity > 0 {
         let v = "y".repeat(verbosity);
-        info!("V: {}", v);
+        debug!("V: {}", v);
         verbosity_arg.push_str(&v);
         sn_launch_tool_args.push(&verbosity_arg);
     }
@@ -158,7 +158,7 @@ pub async fn run_network() -> Result<(), String> {
     );
 
     // We can now call the tool with the args
-    info!("Launching local Safe network...");
+    debug!("Launching local Safe network...");
     run_with(Some(&sn_launch_tool_args))?;
 
     let interval_duration = Duration::from_secs(interval_as_int * 15);

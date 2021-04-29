@@ -202,7 +202,7 @@ impl AdultLiveness {
                 if our_pending_ops.saturating_sub(max_pending_by_neighbours)
                     > MAX_PENDING_OP_DIFFERENCE
                 {
-                    log::info!(
+                    log::debug!(
                         "Our pending ops: {} Neighbour max: {}",
                         our_pending_ops,
                         max_pending_by_neighbours
