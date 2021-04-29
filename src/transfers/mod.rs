@@ -19,7 +19,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     utils, Error, Result,
 };
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use replica_signing::ReplicaSigningImpl;
 #[cfg(feature = "simulated-payouts")]
 use sn_data_types::Transfer;
@@ -177,7 +177,7 @@ impl Transfers {
 
         use TransferError::*;
         if recipient_is_not_section {
-            warn!("Payment: recipient is not section");
+            debug!("Payment: recipient is not section");
             let origin = SrcLocation::EndUser(EndUser::AllClients(payment.sender()));
             return Ok(NodeDuty::Send(OutgoingMsg {
                 msg: Message::CmdError {
@@ -213,7 +213,7 @@ impl Transfers {
                 if total_cost > payment.amount() {
                     // Paying too little will see the amount be forfeited.
                     // This prevents spam of the network.
-                    warn!(
+                    debug!(
                         "Payment: Too low payment: {}, expected: {}",
                         payment.amount(),
                         total_cost
@@ -248,7 +248,7 @@ impl Transfers {
                 }))
             }
             Err(e) => {
-                warn!("Payment: registration or propagation failed: {:?}", e);
+                debug!("Payment: registration or propagation failed: {:?}", e);
                 let origin = SrcLocation::EndUser(EndUser::AllClients(payment.sender()));
                 Ok(NodeDuty::Send(OutgoingMsg {
                     msg: Message::CmdError {

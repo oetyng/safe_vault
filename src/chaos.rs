@@ -23,7 +23,7 @@ macro_rules! with_chaos {
 
             if throw <= chaos_trigger {
                 // do the chaos
-                warn!("Chaos!");
+                debug!("Chaos!");
                 $x
             }
         }

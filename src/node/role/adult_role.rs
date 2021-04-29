@@ -71,7 +71,7 @@ impl AdultRole {
             let chunk = self.chunks.get_chunk(addr).ok()?;
             if we_are_not_holder_anymore {
                 if let Err(err) = self.chunks.remove_chunk(addr).await {
-                    warn!("Error deleting chunk during republish: {:?}", err);
+                    debug!("Error deleting chunk during republish: {:?}", err);
                 }
             }
             // TODO: Push to LRU cache

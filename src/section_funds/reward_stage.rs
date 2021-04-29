@@ -7,7 +7,7 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{Error, Result};
-use log::{debug, warn};
+use log::debug;
 use sn_data_types::{
     Credit, CreditAgreementProof, CreditId, PublicKey, ReplicaPublicKeySet, SignatureShare,
     SignedCredit, SignedCreditShare,
@@ -141,7 +141,7 @@ fn check(sig: &SignatureShare, signatures: &BTreeMap<usize, bls::SignatureShare>
             if share == &sig.share {
                 Some(true)
             } else {
-                warn!(
+                debug!(
                     "####### CreditProposal adding different sig!?? contains {:?}, but adding {:?}..",
                     share,
                     sig.share,

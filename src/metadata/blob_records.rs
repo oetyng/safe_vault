@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use sn_data_types::{Blob, BlobAddress, PublicKey};
 use sn_messaging::{
     client::{
@@ -239,7 +239,7 @@ impl BlobRecords {
         }
         let mut unresponsive_adults = Vec::new();
         for (name, count) in self.adult_liveness.find_unresponsive_adults() {
-            warn!(
+            debug!(
                 "Adult {} has {} pending ops. It might be unresponsive",
                 name, count
             );
@@ -280,7 +280,7 @@ impl BlobRecords {
         }
         let mut unresponsive_adults = Vec::new();
         for (name, count) in self.adult_liveness.find_unresponsive_adults() {
-            warn!(
+            debug!(
                 "Adult {} has {} pending ops. It might be unresponsive",
                 name, count
             );
