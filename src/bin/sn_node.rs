@@ -27,7 +27,7 @@
     unused_results
 )]
 
-use log::{self, error, info};
+use log::{self, debug, info};
 use self_update::{cargo_crate_version, Status};
 use sn_node::{self, add_connection_info, set_connection_info, utils, Config, Node};
 use std::{io::Write, process};
@@ -90,7 +90,7 @@ async fn run_node() {
                     exit(0);
                 }
             }
-            Err(e) => error!("Updating node failed: {:?}", e),
+            Err(e) => debug!("Updating node failed: {:?}", e),
         }
 
         if config.update_only() {
@@ -122,7 +122,7 @@ async fn run_node() {
             Err(e) => {
                 println!("Cannot start node due to error: {:?}. If this is the first node on the network \
                  pass the local address to be used using --first. Exiting", e);
-                error!("Cannot start node due to error: {:?}. If this is the first node on the network \
+                debug!("Cannot start node due to error: {:?}. If this is the first node on the network \
                  pass the local address to be used using --first. Exiting", e);
                 exit(1);
             }
@@ -146,11 +146,11 @@ async fn run_node() {
 
     if config.is_first() {
         set_connection_info(our_conn_info).unwrap_or_else(|err| {
-            error!("Unable to write our connection info to disk: {}", err);
+            debug!("Unable to write our connection info to disk: {}", err);
         });
     } else {
         add_connection_info(our_conn_info).unwrap_or_else(|err| {
-            error!("Unable to add our connection info to disk: {}", err);
+            debug!("Unable to add our connection info to disk: {}", err);
         });
     }
 
@@ -158,7 +158,7 @@ async fn run_node() {
         Ok(()) => exit(0),
         Err(e) => {
             println!("Cannot start node due to error: {:?}", e);
-            error!("Cannot start node due to error: {:?}", e);
+            debug!("Cannot start node due to error: {:?}", e);
             exit(1);
         }
     }

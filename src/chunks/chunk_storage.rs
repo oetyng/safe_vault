@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::{error, info};
+use log::{debug, info};
 use sn_data_types::{Blob, BlobAddress, DataAddress};
 use sn_messaging::{
     client::{CmdError, Error as ErrorMessage, Message, NodeEvent, QueryResponse},
@@ -142,7 +142,7 @@ impl ChunkStorage {
                 }
             }
             Ok(_) => {
-                error!(
+                debug!(
                     "{}: Invalid DeletePrivate(Blob::Public) encountered: {:?}",
                     self, msg_id
                 );

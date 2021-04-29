@@ -8,7 +8,7 @@
 
 use crate::{network::Network, Result};
 use crate::{node_ops::OutgoingMsg, Error};
-use log::{debug, error};
+use log::debug;
 use sn_messaging::{client::Message, Aggregation, DstLocation, Itinerary, SrcLocation};
 use sn_routing::XorName;
 use std::collections::BTreeSet;
@@ -30,7 +30,7 @@ pub(crate) async fn send(msg: OutgoingMsg, network: &Network) -> Result<()> {
 
     result.map_or_else(
         |err| {
-            error!("Unable to send msg: {:?}", err);
+            debug!("Unable to send msg: {:?}", err);
             Err(Error::Logic(format!("Unable to send msg: {:?}", msg.id())))
         },
         |()| Ok(()),
@@ -64,7 +64,7 @@ pub(crate) async fn send_to_nodes(
             .await
             .map_or_else(
                 |err| {
-                    error!("Unable to send Message to Peer: {:?}", err);
+                    debug!("Unable to send Message to Peer: {:?}", err);
                 },
                 |()| {},
             );

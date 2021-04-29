@@ -139,7 +139,7 @@ impl Config {
         config.merge(command_line_args);
 
         config.clear_data_from_disk().unwrap_or_else(|_| {
-            log::error!("Error deleting data file from disk");
+            log::debug!("Error deleting data file from disk");
         });
 
         Ok(config)

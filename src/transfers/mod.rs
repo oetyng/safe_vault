@@ -19,7 +19,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     utils, Error, Result,
 };
-use log::{debug, error, info};
+use log::{debug, info};
 use replica_signing::ReplicaSigningImpl;
 #[cfg(feature = "simulated-payouts")]
 use sn_data_types::Transfer;
@@ -451,7 +451,7 @@ impl Transfers {
             }
             Err(Error::UnknownSectionKey(_))
             | Err(Error::Transfer(sn_transfers::Error::SectionKeyNeverExisted)) => {
-                error!(">> UnknownSectionKey at receive_propagated");
+                debug!(">> UnknownSectionKey at receive_propagated");
                 Message::NodeCmdError {
                     error: NodeCmdError::Transfers(TransferPropagation(ErrorMessage::NoSuchKey)),
                     id: MessageId::in_response_to(&msg_id),
@@ -459,7 +459,7 @@ impl Transfers {
                 }
             }
             Err(e) => {
-                error!("Error receiving propogated: {:?}", e);
+                debug!("Error receiving propogated: {:?}", e);
 
                 return Err(e);
             }

@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::{debug, error, info};
+use log::{debug, info};
 use sn_data_types::{Blob, BlobAddress, PublicKey};
 use sn_messaging::{
     client::{
@@ -216,7 +216,7 @@ impl BlobRecords {
             .record_adult_write_liveness(correlation_id, src)
         {
             if let Err(error) = result {
-                error!("Error at Adult while performing a BlobWrite: {:?}", &error);
+                debug!("Error at Adult while performing a BlobWrite: {:?}", &error);
                 // Depending on error, we might have to take action here.
                 if let Some(end_user) = origin {
                     duties.push(NodeDuty::Send(OutgoingMsg {

@@ -22,7 +22,7 @@ use crate::{
     state_db::{get_reward_pk, store_new_reward_keypair},
     Config, Error, Result,
 };
-use log::{error, info};
+use log::{debug, info};
 use rand::rngs::OsRng;
 use role::{AdultRole, Role};
 use sn_data_types::PublicKey;
@@ -154,7 +154,7 @@ fn handle_error(err: LazyError) {
     );
 
     if let Some(source) = err.error.source() {
-        error!("Source of error: {:?}", source);
+        debug!("Source of error: {:?}", source);
     }
 }
 
@@ -166,9 +166,9 @@ fn try_handle_error(err: Error, ctx: Option<MsgContext>) {
                 "unimplemented: Handle errors. This should be return w/ lazyError to sender. {:?}",
                 err
             );
-            error!("Source of error: {:?}", source);
+            debug!("Source of error: {:?}", source);
         } else {
-            error!(
+            debug!(
                 "Erroring without a msg context. Source of error: {:?}",
                 source
             );
