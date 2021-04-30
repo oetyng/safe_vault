@@ -45,11 +45,11 @@ impl ChunkStorage {
                 if data.is_public() {
                     Ok(())
                 } else {
-                    Err(CmdError::Data(convert_to_error_message(Error::DataExists)?))
+                    Err(CmdError::Data(convert_to_error_message(Error::DataExists)))
                 }
             }
             Ok(()) => Ok(()),
-            Err(other) => Err(CmdError::Data(convert_to_error_message(other)?)),
+            Err(other) => Err(CmdError::Data(convert_to_error_message(other))),
         };
 
         Ok(NodeDuty::Send(OutgoingMsg {

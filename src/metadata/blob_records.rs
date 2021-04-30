@@ -288,7 +288,7 @@ impl BlobRecords {
         msg_id: MessageId,
         origin: EndUser,
     ) -> Result<NodeDuty> {
-        let message_error = convert_to_error_message(error)?;
+        let message_error = convert_to_error_message(error);
         Ok(NodeDuty::Send(OutgoingMsg {
             msg: Message::CmdError {
                 error: CmdError::Data(message_error),
