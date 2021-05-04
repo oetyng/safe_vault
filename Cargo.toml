@@ -43,6 +43,8 @@ dashmap = "3.11.10"
 thiserror = "1.0.23"
 itertools = "0.10.0"
 async-trait = "0.1.42"
+chrono = "0.4.19"
+systemstat = "0.1.7"
 
   [dependencies.bytes]
   version = "1.0.1"

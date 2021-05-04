@@ -36,6 +36,7 @@ mod chunks;
 mod config_handler;
 mod error;
 mod event_mapping;
+mod logging;
 mod metadata;
 mod network;
 mod node;
