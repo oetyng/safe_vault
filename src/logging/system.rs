@@ -151,7 +151,11 @@ fn map(mem: systemstat::PlatformMemory) -> PlatformMemory {
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     return PlatformMemory {
-        meminfo: mem.meminfo,
+        meminfo: mem
+            .meminfo
+            .iter()
+            .map(|(a, b)| (a.clone(), b.as_u64()))
+            .collect(),
     };
 }
 

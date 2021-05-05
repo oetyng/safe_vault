@@ -48,7 +48,7 @@ fn log(last_log: &mut Instant) {
         trace!("{:?}", cpu_load_aggregate);
     }
     if let Ok(cpu_temp) = stats.cpu_temp {
-        trace!("cpu temp: {}", cpu_temp);
+        trace!("CpuTemp {{ celsius: {} }}", cpu_temp);
     }
     if let Ok(load_average) = stats.load_average {
         trace!("{:?}", load_average);
