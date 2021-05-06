@@ -6,7 +6,10 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use sysinfo::{ComponentExt, DiskExt, NetworkExt, NetworksExt, ProcessExt, ProcessorExt, System, SystemExt, UserExt};
+use sysinfo::{
+    ComponentExt, DiskExt, NetworkExt, NetworksExt, ProcessExt, ProcessorExt, System, SystemExt,
+    UserExt,
+};
 
 use log::trace;
 use std::{
@@ -33,7 +36,13 @@ pub fn run_system_logger() {
 
 fn initial_log(system: &mut System) {
     // Display system information:
-    trace!("System {{ name: {}, kernel_version: {}, os_version: {}, host_name: {}, }}", fmt(system.get_name()), fmt(system.get_kernel_version()), fmt(system.get_os_version()), fmt(system.get_host_name()));
+    trace!(
+        "System {{ name: {}, kernel_version: {}, os_version: {}, host_name: {}, }}",
+        fmt(system.get_name()),
+        fmt(system.get_kernel_version()),
+        fmt(system.get_os_version()),
+        fmt(system.get_host_name())
+    );
 }
 
 fn fmt(string: Option<String>) -> String {
