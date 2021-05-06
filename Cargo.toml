@@ -45,6 +45,7 @@ itertools = "0.10.0"
 async-trait = "0.1.42"
 chrono = "0.4.19"
 systemstat = "0.1.7"
+sysinfo = "0.17.2"
 
   [dependencies.bytes]
   version = "1.0.1"
