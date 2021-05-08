@@ -86,7 +86,6 @@ impl Node {
         let elder = self.role.as_elder_mut()?;
 
         if elder.received_initial_sync {
-            debug!("We are already received the initial sync from our section. Ignoring update");
             return Ok(NodeDuty::NoOp);
         }
 

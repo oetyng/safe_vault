@@ -6,12 +6,11 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, thread, time::Duration};
-use thiserror::Error;
-use sysinfo::{ProcessExt, NetworkExt, SystemExt, System};
+use std::ffi::OsString;
+use sysinfo::{DiskType, NetworkExt, ProcessExt, ProcessStatus, System, SystemExt};
 
 /// Struct containing a disk information.
+#[derive(Debug)]
 pub struct Disk {
     pub type_: DiskType,
     pub name: OsString,
@@ -21,45 +20,40 @@ pub struct Disk {
     pub available_space: u64,
 }
 
-/// Struct containing a process' information.
-pub struct Process {
-    pub name: String,
-    pub cmd: Vec<String>,
-    pub exe: PathBuf,
-    pub pid: Pid,
-    //environ: Vec<String>,
-    //cwd: PathBuf,
-    //root: PathBuf,
-    pub memory: u64,
-    pub virtual_memory: u64,
-    pub parent: Option<Pid>,
-    pub status: ProcessStatus,
-    cpu_calc_values: CPUsageCalculationValues,
-    pub start_time: u64,
-    pub cpu_usage: f32,
-    pub updated: bool,
-    pub disk_usage: sysinfo::DiskUsage,
+#[derive(Debug)]
+pub struct DiskUsage {
+    /// Total number of written bytes.
+    pub total_written_bytes: u64,
+    /// Number of written bytes since the last refresh.
+    pub written_bytes: u64,
+    /// Total number of read bytes.
+    pub total_read_bytes: u64,
+    /// Number of read bytes since the last refresh.
+    pub read_bytes: u64,
 }
 
+/// Struct containing a process' information.
+#[derive(Debug)]
+pub struct Process {
+    pub memory: u64,
+    pub virtual_memory: u64,
+    pub cpu_usage: f32,
+    pub disk_usage: DiskUsage,
+}
 
 impl Process {
-    pub fn map(process: sysinfo::Process) {
+    pub fn map(process: &sysinfo::Process) -> Process {
+        let usage = process.disk_usage();
         Process {
-            name: process.name(),
-            cmd: process.cmd(),
-            exe: process.exe(),
-            pid: process.pid(),
-            //environ: Vec<String>,
-            //cwd: PathBuf,
-            //root: PathBuf,
             memory: process.memory(),
             virtual_memory: process.virtual_memory(),
-            parent: Option<Pid>,
-            status: ProcessStatus,
-            start_time: u64,
-            cpu_usage: f32,
-            updated: bool,
-            disk_usage: sysinfo::DiskUsage,
+            cpu_usage: process.cpu_usage(),
+            disk_usage: DiskUsage {
+                total_written_bytes: usage.total_written_bytes,
+                written_bytes: usage.written_bytes,
+                total_read_bytes: usage.total_read_bytes,
+                read_bytes: usage.read_bytes,
+            },
         }
     }
 }

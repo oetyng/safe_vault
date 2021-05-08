@@ -6,18 +6,20 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use sysinfo::{
-    ComponentExt, DiskExt, NetworkExt, NetworksExt, ProcessExt, ProcessorExt, System, SystemExt,
-    UserExt,
-};
+mod system;
 
 use log::trace;
 use std::{
     thread,
     time::{Duration, Instant},
 };
+use sysinfo::{
+    ComponentExt, DiskExt, NetworkExt, NetworksExt, ProcessExt, ProcessorExt, System, SystemExt,
+    UserExt,
+};
+use system::Process;
 
-const LOG_INTERVAL: Duration = std::time::Duration::from_secs(10);
+const LOG_INTERVAL: Duration = std::time::Duration::from_secs(30);
 
 pub fn run_system_logger() {
     let mut system = System::new_all();
@@ -53,23 +55,26 @@ fn log(last_log: &mut Instant, system: &mut System) {
     *last_log = Instant::now();
 
     system.refresh_all();
+    let our_pid = &(std::process::id() as usize);
 
     // Every sn_node process' info
     for (pid, proc_) in system.get_processes() {
-        if !proc_.name().contains("sn_node") {
+        if pid != our_pid {
             continue;
         }
-        trace!("Process {{ pid: {}, name: {}, status: {}, cpu_usage: {}, disk_usage: {:?}, memory: {}, start_time: {}, virtual_memory: {} }}", pid, proc_.name(), proc_.status(), proc_.cpu_usage(), proc_.disk_usage(), proc_.memory(), proc_.start_time(), proc_.virtual_memory());
+        trace!("{:?}", Process::map(proc_));
     }
 
     // The temperature of the different components
-    for component in system.get_components() {
-        trace!("{:?}", component);
+    let list = system.get_components();
+    if !list.is_empty() {
+        trace!("ComponentTemperatures {{ list: {:?} }}", list);
     }
 
     // All disks' information
-    for disk in system.get_disks() {
-        trace!("{:?}", disk);
+    let list = system.get_disks();
+    if !list.is_empty() {
+        trace!("Disks {{ list: {:?} }}", list);
     }
 
     // RAM and SWAP information

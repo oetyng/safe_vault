@@ -17,7 +17,7 @@ use crate::{
     section_funds::{reward_stage::RewardStage, Credits, SectionFunds},
     Error, Node, Result,
 };
-use log::debug;
+use log::{debug, info};
 use sn_messaging::{
     client::{Message, NodeQuery},
     Aggregation, DstLocation, MessageId,
@@ -28,9 +28,6 @@ use xor_name::XorName;
 impl Node {
     ///
     pub async fn handle(&mut self, duty: NodeDuty) -> Result<NodeDuties> {
-        if !matches!(duty, NodeDuty::NoOp) {
-            debug!("Handling NodeDuty: {:?}", duty);
-        }
         match duty {
             NodeDuty::Genesis => {
                 self.level_up().await?;
@@ -45,6 +42,10 @@ impl Node {
                 newbie,
             } => {
                 if newbie {
+                    info!(
+                        "Promoted {{ prefix: {:?}, section_key: {:?} }}",
+                        our_prefix, our_key
+                    );
                     self.level_up().await?;
                     if self.network_api.our_prefix().await.is_empty()
                         && self.network_api.section_chain().await.len() <= ELDER_SIZE
@@ -54,6 +55,10 @@ impl Node {
                     }
                     Ok(vec![])
                 } else {
+                    info!(
+                        "EldersChanged {{ prefix: {:?}, key: {:?} }}",
+                        our_prefix, our_key
+                    );
                     self.update_replicas().await?;
                     let elder = self.role.as_elder_mut()?;
                     let msg_id =
@@ -132,8 +137,8 @@ impl Node {
                     // update state
                     elder.section_funds = SectionFunds::KeepingNodeWallets(reward_wallets.clone());
                     let section_key = &self.network_api.section_public_key().await?;
-                    debug!(
-                        "COMPLETED SPLIT. New section: ({}). Total rewards paid: {}.",
+                    info!(
+                        "SplitCompleted {{ new_section: {}, rewards_paid: {} }}",
                         section_key, reward_sum
                     );
                     ops.push(NodeDuty::SetNodeJoinsAllowed(true));

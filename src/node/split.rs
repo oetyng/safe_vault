@@ -13,7 +13,7 @@ use crate::{
     transfers::get_replicas::replica_info,
     Error, Node, Result,
 };
-use log::debug;
+use log::{debug, info};
 use section_funds::{
     elder_signing::ElderSigning,
     reward_process::{OurSection, RewardProcess},
@@ -83,24 +83,18 @@ impl Node {
 
         let sibling_prefix = our_prefix.sibling();
 
-        debug!(
-            "@@@@@@ SPLIT: Our prefix: {:?}, neighbour: {:?}",
-            our_prefix, sibling_prefix,
-        );
-        debug!(
-            "@@@@@@ SPLIT: Our key: {:?}, neighbour: {:?}",
-            our_key, sibling_key
-        );
+        info!("SectionSplit {{ our_prefix: {:?}, section_key: {:?}, sibling_prefix: {:?}, sibling_key: {:?} }}", our_prefix, our_key, our_prefix.sibling(), sibling_key);
 
         let mut ops = vec![];
 
         if payments > Token::zero() {
             let section_managed = elder.transfers.managed_amount().await?;
 
-            // payments made since last churn
-            debug!("Payments: {}", payments);
-            // total amount in wallets
-            debug!("Managed amount: {}", section_managed);
+            // payments made since last churn and total amount in wallets
+            info!(
+                "Tokens {{ prefix: {:?}, payments: {:?}, section_managed: {:?} }}",
+                our_prefix, payments, section_managed
+            );
 
             // generate reward and minting proposal
             let mut process = RewardProcess::new(

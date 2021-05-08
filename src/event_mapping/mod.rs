@@ -10,12 +10,12 @@ mod map_msg;
 
 use super::node_ops::NodeDuty;
 use crate::network::Network;
-use log::debug;
+use log::{debug, error, info};
 use map_msg::{map_node_msg, match_user_sent_msg};
 use sn_data_types::PublicKey;
 use sn_messaging::{client::Message, SrcLocation};
 use sn_routing::XorName;
-use sn_routing::{Event as RoutingEvent, NodeElderChange, MIN_AGE};
+use sn_routing::{Event as RoutingEvent, NodeElderChange};
 use std::{thread::sleep, time::Duration};
 
 #[derive(Debug)]
@@ -41,7 +41,6 @@ pub struct LazyError {
 
 /// Process any routing event
 pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Mapping {
-    debug!("Handling RoutingEvent: {:?}", event);
     match event {
         RoutingEvent::MessageReceived {
             content, src, dst, ..
@@ -58,7 +57,13 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
 
             map_node_msg(msg, src, dst)
         }
-        RoutingEvent::ClientMessageReceived { msg, user } => match_user_sent_msg(*msg, user),
+        RoutingEvent::ClientMessageReceived { msg, user } => {
+            info!(
+                "ClientMessageReceived {{ msg: {:?}, user: {:?} }}",
+                msg, user
+            );
+            match_user_sent_msg(*msg, user)
+        }
         RoutingEvent::SectionSplit {
             elders,
             sibling_elders,
@@ -91,7 +96,6 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
             elders,
             self_status_change,
         } => {
-            log_network_stats(network_api).await;
             let first_section = network_api.our_prefix().await.is_empty();
             let first_elder = network_api.our_elder_names().await.len() == 1;
             if first_section && first_elder {
@@ -132,7 +136,6 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
                     }
                     // -- ugly temporary until fixed in routing --
 
-                    debug!("******Elders changed, we are still Elder");
                     Mapping::Ok {
                         op: NodeDuty::EldersChanged {
                             our_prefix: elders.prefix,
@@ -160,8 +163,6 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
                     }
                     // -- ugly temporary until fixed in routing --
 
-                    debug!("******Elders changed, we are promoted");
-
                     Mapping::Ok {
                         op: NodeDuty::EldersChanged {
                             our_prefix: elders.prefix,
@@ -179,7 +180,7 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
             }
         }
         RoutingEvent::MemberLeft { name, age } => {
-            log_network_stats(network_api).await;
+            info!("MemberLeft {{ name: {}, age: {} }}", name, age);
             Mapping::Ok {
                 op: NodeDuty::ProcessLostMember {
                     name: XorName(name.0),
@@ -188,11 +189,15 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
                 ctx: None,
             }
         }
-        RoutingEvent::MemberJoined { previous_name, .. } => {
-            log_network_stats(network_api).await;
+        RoutingEvent::MemberJoined {
+            name,
+            age,
+            previous_name,
+            ..
+        } => {
+            info!("MemberJoined {{ name: {}, age: {} }}", name, age);
             let op = if previous_name.is_some() {
-                debug!("A relocated node has joined the section.");
-                // Switch joins_allowed off a new adult joining.
+                // Switch joins_allowed off after a new adult joined.
                 NodeDuty::SetNodeJoinsAllowed(false)
             } else if network_api.our_prefix().await.is_empty() {
                 NodeDuty::NoOp
@@ -202,11 +207,8 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
             Mapping::Ok { op, ctx: None }
         }
         RoutingEvent::Relocated { .. } => {
-            // Check our current status
             let age = network_api.age().await;
-            if age > MIN_AGE {
-                debug!("Relocated, our Age: {:?}", age);
-            }
+            info!("Relocated {{ our_age: {:?} }}", age);
             Mapping::Ok {
                 op: NodeDuty::NoOp,
                 ctx: None,
@@ -216,27 +218,25 @@ pub async fn map_routing_event(event: RoutingEvent, network_api: &Network) -> Ma
             remaining,
             added,
             removed,
-        } => Mapping::Ok {
-            op: NodeDuty::AdultsChanged {
-                remaining,
-                added,
-                removed,
-            },
-            ctx: None,
-        },
+        } => {
+            info!(
+                "AdultsChanged {{ prefix: {:?}, adults: {}, }}",
+                network_api.our_prefix().await,
+                remaining.len() + added.len(),
+            );
+            Mapping::Ok {
+                op: NodeDuty::AdultsChanged {
+                    remaining,
+                    added,
+                    removed,
+                },
+                ctx: None,
+            }
+        }
         // Ignore all other events
         _ => Mapping::Ok {
             op: NodeDuty::NoOp,
             ctx: None,
         },
     }
-}
-
-pub async fn log_network_stats(network_api: &Network) {
-    debug!(
-        "{:?}: {:?} Elders, {:?} Adults.",
-        network_api.our_prefix().await,
-        network_api.our_elder_names().await.len(),
-        network_api.our_adults().await.len()
-    );
 }
