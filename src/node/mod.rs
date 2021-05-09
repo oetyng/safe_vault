@@ -17,7 +17,7 @@ use crate::{
     chunk_store::UsedSpace,
     chunks::Chunks,
     event_mapping::{map_routing_event, LazyError, Mapping, MsgContext},
-    logging::run_system_logger,
+    logging::{log_ctx::LogCtx, run_system_logger},
     network::Network,
     node_ops::NodeDuty,
     state_db::{get_reward_pk, store_new_reward_keypair},
@@ -64,8 +64,6 @@ pub struct Node {
 impl Node {
     /// Initialize a new node.
     pub async fn new(config: &Config) -> Result<Self> {
-        run_system_logger();
-
         let root_dir_buf = config.root_dir()?;
         let root_dir = root_dir_buf.as_path();
         std::fs::create_dir_all(root_dir)?;
@@ -81,6 +79,8 @@ impl Node {
         };
 
         let (network_api, network_events) = Network::new(root_dir, config).await?;
+
+        run_system_logger(LogCtx::new(network_api.clone())).await;
 
         let node = Self {
             role: Role::Adult(AdultRole {

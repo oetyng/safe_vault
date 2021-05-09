@@ -8,7 +8,6 @@
 
 use super::{LazyError, Mapping, MsgContext};
 use crate::{node_ops::NodeDuty, Error};
-use log::trace;
 use sn_messaging::{
     client::{
         Cmd, Message, NodeCmd, NodeEvent, NodeQuery, NodeRewardQuery, NodeSystemCmd,
@@ -167,7 +166,6 @@ fn match_or_err(msg: Message, src: SrcLocation) -> Mapping {
 }
 
 fn match_node_msg(msg: Message, origin: SrcLocation) -> NodeDuty {
-    trace!("MessageReceived {{ msg: {:?}, origin: {:?} }}", msg, origin);
     match &msg {
         // ------ wallet register ------
         Message::NodeCmd {

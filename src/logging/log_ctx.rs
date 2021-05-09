@@ -1,9 +1,3 @@
-use std::collections::BTreeSet;
-
-use sn_routing::{Prefix, XorName};
-
-use crate::network::Network;
-
 // Copyright 2021 MaidSafe.net limited.
 //
 // This SAFE Network Software is licensed to you under The General Public License (GPL), version 3.
@@ -12,34 +6,19 @@ use crate::network::Network;
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-#[derive(Clone)]
-pub struct AdultReader {
+use crate::network::Network;
+use sn_routing::Prefix;
+
+pub struct LogCtx {
     network: Network,
 }
 
-impl AdultReader {
-    /// Access to the current state of our adult constellation
+impl LogCtx {
     pub fn new(network: Network) -> Self {
         Self { network }
     }
 
     pub async fn prefix(&self) -> Prefix {
         self.network.our_prefix().await
-    }
-
-    /// Dynamic state
-    pub async fn non_full_adults_closest_to(
-        &self,
-        name: &XorName,
-        full_adults: &BTreeSet<XorName>,
-        count: usize,
-    ) -> Vec<XorName> {
-        self.network
-            .our_adults_sorted_by_distance_to(name)
-            .await
-            .into_iter()
-            .filter(|name| !full_adults.contains(name))
-            .take(count)
-            .collect::<Vec<_>>()
     }
 }

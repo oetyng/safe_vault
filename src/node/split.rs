@@ -89,10 +89,9 @@ impl Node {
 
         if payments > Token::zero() {
             let section_managed = elder.transfers.managed_amount().await?;
-
             // payments made since last churn and total amount in wallets
             info!(
-                "Tokens {{ prefix: {:?}, payments: {:?}, section_managed: {:?} }}",
+                "{:?}: Tokens {{ payments: {:?}, section_managed: {:?} }}",
                 our_prefix, payments, section_managed
             );
 

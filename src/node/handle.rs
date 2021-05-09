@@ -43,7 +43,7 @@ impl Node {
             } => {
                 if newbie {
                     info!(
-                        "Promoted {{ prefix: {:?}, section_key: {:?} }}",
+                        "{:?}: Promoted {{ section_key: {:?} }}",
                         our_prefix, our_key
                     );
                     self.level_up().await?;
@@ -55,10 +55,7 @@ impl Node {
                     }
                     Ok(vec![])
                 } else {
-                    info!(
-                        "EldersChanged {{ prefix: {:?}, key: {:?} }}",
-                        our_prefix, our_key
-                    );
+                    info!("{:?}: EldersChanged {{ key: {:?} }}", our_prefix, our_key);
                     self.update_replicas().await?;
                     let elder = self.role.as_elder_mut()?;
                     let msg_id =

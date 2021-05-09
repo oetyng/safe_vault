@@ -12,7 +12,7 @@ use crate::{
     node_ops::{NodeDuties, NodeDuty, OutgoingMsg},
     Error, Result,
 };
-use log::debug;
+use log::{debug, trace};
 use sn_data_types::{Blob, BlobAddress, PublicKey};
 use sn_messaging::{
     client::{
@@ -113,7 +113,11 @@ impl BlobRecords {
 
     /// Adds a given node to the list of full nodes.
     pub async fn increase_full_node_count(&mut self, node_id: PublicKey) -> Result<()> {
-        debug!("No. of Full Nodes: {:?}", self.full_nodes().await);
+        trace!(
+            "{:?}: FullAdults {{ count: {} }}",
+            self.reader.prefix().await,
+            self.full_nodes().await,
+        );
         debug!("Increasing full_node count");
         let _ = self
             .adult_storage_info
