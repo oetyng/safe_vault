@@ -52,7 +52,6 @@ impl MapStorage {
     }
 
     pub async fn update(&mut self, map_data: MapDataExchange) -> Result<()> {
-        debug!("Updating Map chunkstore");
         let chunkstore = &mut self.chunks;
         let MapDataExchange(data) = map_data;
 

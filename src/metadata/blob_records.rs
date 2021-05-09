@@ -66,7 +66,6 @@ impl BlobRecords {
     }
 
     pub async fn update(&self, blob_data: BlobDataExchange) -> Result<()> {
-        debug!("Updating Blob records");
         let mut orig_full_adults = self.adult_storage_info.full_adults.write().await;
 
         let BlobDataExchange { full_adults } = blob_data;

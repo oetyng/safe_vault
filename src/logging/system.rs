@@ -7,15 +7,15 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use std::ffi::OsString;
-use sysinfo::{DiskType, NetworkExt, ProcessExt, ProcessStatus, System, SystemExt};
+use sysinfo::{DiskType, ProcessExt};
 
 /// Struct containing a disk information.
 #[derive(Debug)]
 pub struct Disk {
     pub type_: DiskType,
     pub name: OsString,
-    pub file_system: Vec<u8>,
-    pub mount_point: String,
+    pub file_system: String,
+    pub mount_point: OsString,
     pub total_space: u64,
     pub available_space: u64,
 }
@@ -32,6 +32,23 @@ pub struct DiskUsage {
     pub read_bytes: u64,
 }
 
+#[derive(Debug)]
+pub struct Network {
+    pub name: String,
+    pub received: u64,
+    pub total_received: u64,
+    pub transmitted: u64,
+    pub total_transmitted: u64,
+    pub packets_received: u64,
+    pub total_packets_received: u64,
+    pub packets_transmitted: u64,
+    pub total_packets_transmitted: u64,
+    pub errors_on_received: u64,
+    pub total_errors_on_received: u64,
+    pub errors_on_transmitted: u64,
+    pub total_errors_on_transmitted: u64,
+}
+
 /// Struct containing a process' information.
 #[derive(Debug)]
 pub struct Process {
@@ -42,12 +59,12 @@ pub struct Process {
 }
 
 impl Process {
-    pub fn map(process: &sysinfo::Process) -> Process {
+    pub fn map(process: &sysinfo::Process, processors: usize) -> Process {
         let usage = process.disk_usage();
         Process {
             memory: process.memory(),
             virtual_memory: process.virtual_memory(),
-            cpu_usage: process.cpu_usage(),
+            cpu_usage: process.cpu_usage() / processors as f32,
             disk_usage: DiskUsage {
                 total_written_bytes: usage.total_written_bytes,
                 written_bytes: usage.written_bytes,

@@ -52,7 +52,6 @@ impl SequenceStorage {
     }
 
     pub async fn update(&mut self, seq_data: SequenceDataExchange) -> Result<()> {
-        debug!("Updating Sequence chunkstore");
         let chunkstore = &mut self.chunks;
         let SequenceDataExchange(data) = seq_data;
 
