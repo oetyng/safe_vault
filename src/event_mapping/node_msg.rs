@@ -15,8 +15,8 @@ use crate::{
 use log::debug;
 use sn_messaging::{
     node::{
-        NodeCmd, NodeDataQueryResponse, NodeMsg, NodeQuery, NodeQueryResponse, NodeRewardQuery,
-        NodeSystemCmd, NodeSystemQuery, NodeTransferCmd, NodeTransferQuery,
+        NodeCmd, NodeDataQueryResponse, NodeMsg, NodeQuery, NodeQueryResponse, NodeSystemCmd,
+        NodeSystemQuery,
     },
     Aggregation, DstLocation, MessageId, SrcLocation,
 };
@@ -85,42 +85,21 @@ fn match_node_msg(msg: NodeMsg, origin: SrcLocation) -> NodeDuty {
         NodeMsg::NodeCmd {
             cmd:
                 NodeCmd::System(NodeSystemCmd::ReceiveExistingData {
-                    node_rewards,
-                    user_wallets,
+                    node_wallets,
                     metadata,
                 }),
             ..
         } => NodeDuty::SynchState {
-            node_rewards,
-            user_wallets,
+            node_wallets,
             metadata,
         },
-        NodeMsg::NodeCmd {
-            cmd: NodeCmd::System(NodeSystemCmd::ProposeRewardPayout(proposal)),
-            ..
-        } => NodeDuty::ReceiveRewardProposal(proposal),
-        NodeMsg::NodeCmd {
-            cmd: NodeCmd::System(NodeSystemCmd::AccumulateRewardPayout(accumulation)),
-            ..
-        } => NodeDuty::ReceiveRewardAccumulation(accumulation),
-        // ------ section funds -----
+        // ------ Node wallets -----
         NodeMsg::NodeQuery {
-            query: NodeQuery::Rewards(NodeRewardQuery::GetNodeWalletKey(node_name)),
+            query: NodeQuery::System(NodeSystemQuery::GetNodeWalletKey(node_name)),
             id,
             ..
         } => NodeDuty::GetNodeWalletKey {
             node_name,
-            msg_id: id,
-            origin,
-        },
-        //
-        // ------ transfers --------
-        NodeMsg::NodeCmd {
-            cmd: NodeCmd::Transfers(NodeTransferCmd::PropagateTransfer(proof)),
-            id,
-            ..
-        } => NodeDuty::PropagateTransfer {
-            proof,
             msg_id: id,
             origin,
         },
@@ -208,13 +187,6 @@ fn match_node_msg(msg: NodeMsg, origin: SrcLocation) -> NodeDuty {
             cmd: NodeCmd::System(NodeSystemCmd::StorageFull { node_id, .. }),
             ..
         } => NodeDuty::IncrementFullNodeCount { node_id },
-        //
-        // ------ transfers ------
-        NodeMsg::NodeQuery {
-            query: NodeQuery::Transfers(NodeTransferQuery::GetReplicaEvents),
-            id,
-            ..
-        } => NodeDuty::GetTransferReplicaEvents { msg_id: id, origin },
         // --- Adult Operation response ---
         NodeMsg::NodeQueryResponse {
             response: NodeQueryResponse::Data(NodeDataQueryResponse::GetChunk(res)),

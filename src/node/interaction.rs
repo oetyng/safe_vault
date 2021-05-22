@@ -6,46 +6,42 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
+use super::role::ElderRole;
 use crate::{
-    node_ops::{MsgType, NodeDuties, NodeDuty, OutgoingMsg},
+    node_ops::{MsgType, NodeDuty, OutgoingMsg},
     Node, Result,
 };
-use sn_data_types::{CreditAgreementProof, CreditId, PublicKey, SectionElders};
+use sn_data_types::{PublicKey, SectionElders};
 use sn_messaging::{
-    node::{
-        NodeCmd, NodeMsg, NodeQueryResponse, NodeSystemCmd, NodeSystemQueryResponse,
-        NodeTransferCmd,
-    },
+    node::{NodeCmd, NodeMsg, NodeQueryResponse, NodeSystemCmd, NodeSystemQueryResponse},
     Aggregation, DstLocation, MessageId, SrcLocation,
 };
 use sn_routing::{Prefix, XorName};
-use std::collections::{BTreeMap, BTreeSet};
-
-use super::role::ElderRole;
+use std::collections::BTreeSet;
 
 impl Node {
-    pub(crate) fn propagate_credits(
-        credit_proofs: BTreeMap<CreditId, CreditAgreementProof>,
-    ) -> Result<NodeDuties> {
-        use NodeCmd::*;
-        use NodeTransferCmd::*;
-        let mut ops = vec![];
+    // pub(crate) fn propagate_credits(
+    //     credit_proofs: BTreeMap<CreditId, CreditAgreementProof>,
+    // ) -> Result<NodeDuties> {
+    //     use NodeCmd::*;
+    //     use NodeTransferCmd::*;
+    //     let mut ops = vec![];
 
-        for (_, credit_proof) in credit_proofs {
-            let location = XorName::from(credit_proof.recipient());
-            let msg_id = MessageId::from_content(&credit_proof.debiting_replicas_sig)?;
-            ops.push(NodeDuty::Send(OutgoingMsg {
-                msg: MsgType::Node(NodeMsg::NodeCmd {
-                    cmd: Transfers(PropagateTransfer(credit_proof)),
-                    id: msg_id,
-                }),
-                section_source: true, // i.e. errors go to our section
-                dst: DstLocation::Section(location),
-                aggregation: Aggregation::AtDestination, // not necessary, but will be slimmer
-            }))
-        }
-        Ok(ops)
-    }
+    //     for (_, credit_proof) in credit_proofs {
+    //         let location = XorName::from(credit_proof.recipient());
+    //         let msg_id = MessageId::from_content(&credit_proof.debiting_replicas_sig)?;
+    //         ops.push(NodeDuty::Send(OutgoingMsg {
+    //             msg: MsgType::Node(NodeMsg::NodeCmd {
+    //                 cmd: Transfers(PropagateTransfer(credit_proof)),
+    //                 id: msg_id,
+    //             },
+    //             section_source: true, // i.e. errors go to our section
+    //             dst: DstLocation::Section(location),
+    //             aggregation: Aggregation::AtDestination, // not necessary, but will be slimmer
+    //         }))
+    //     }
+    //     Ok(ops)
+    // }
 
     /// https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+is%3Aopen+eval_order_dependence
     #[allow(clippy::eval_order_dependence)]
@@ -112,15 +108,10 @@ pub(crate) async fn push_state(
     msg_id: MessageId,
     peers: BTreeSet<XorName>,
 ) -> Result<NodeDuty> {
-    let user_wallets = elder.transfers.user_wallets();
-    let node_rewards = elder.section_funds.node_wallets();
+    let node_wallets = elder.payments.node_wallets();
 
     // only push that what should be in dst
-    let user_wallets = user_wallets
-        .into_iter()
-        .filter(|(key, _)| prefix.matches(&XorName::from(*key)))
-        .collect();
-    let node_rewards = node_rewards
+    let node_wallets = node_wallets
         .into_iter()
         .filter(|(name, _)| prefix.matches(name))
         .collect();
@@ -130,8 +121,7 @@ pub(crate) async fn push_state(
     Ok(NodeDuty::SendToNodes {
         msg: NodeMsg::NodeCmd {
             cmd: NodeCmd::System(NodeSystemCmd::ReceiveExistingData {
-                node_rewards,
-                user_wallets,
+                node_wallets,
                 metadata,
             }),
             id: msg_id,

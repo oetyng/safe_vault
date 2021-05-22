@@ -12,41 +12,6 @@ use std::collections::BTreeMap;
 
 const MIN_REWARD_AGE: u8 = 6;
 
-///  -----  MINTING  -----
-/// This is the minting of new coins happening;
-/// the size being the sum of payments to parent section,
-/// i.e. it at most doubles the amount paid into section,
-/// or else what's left until we've reached max supply.
-/// Max supply is the proportional supply for a section in
-/// a network of a certain size, i.e. max _total_ supply (2^32) divided by number of sections.
-pub fn get_reward_and_mint_amount(
-    payments: Token,
-    section_managed: Token,
-    max_supply: Token,
-) -> Token {
-    let payments = payments.as_nano();
-    let section_managed = section_managed.as_nano();
-    let max_supply = max_supply.as_nano();
-    let reward_nanos = if max_supply > section_managed {
-        // an amount at most equal to `payments` will be minted
-        let to_be_minted = u64::min(payments, max_supply - section_managed);
-        // reward = payments + newly minted tokens
-        payments + to_be_minted
-    } else {
-        // the section has exceeded its proportional supply in the network
-        let excess_supply = section_managed - max_supply;
-        // paid tokens are burned by
-        // rewarding less than paid
-        if payments > excess_supply {
-            payments - excess_supply
-        } else {
-            0 // can't go minus rewards, but whatever was paid is now burned completely
-        }
-    };
-
-    Token::from_nano(reward_nanos)
-}
-
 /// Calculates reward for each public key
 /// proportional to the age of its node,
 /// out of the total amount supplied.
@@ -153,7 +118,7 @@ mod test {
     #[test]
     fn calculates_reward_distribution() {
         // setup
-        let amount = Token::from_nano(u32::MAX as u64 * 1_000_000_000);
+        let amount = Token::from_nano(15555864);
         println!("Paid to section: {:?}", amount.as_nano());
         println!();
 

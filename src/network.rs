@@ -13,12 +13,12 @@ use crate::{
 use bls::PublicKeySet;
 use bytes::Bytes;
 use ed25519_dalek::PublicKey as Ed25519PublicKey;
+use secured_linked_list::SecuredLinkedList;
 use serde::Serialize;
 use sn_data_types::{PublicKey, Signature, SignatureShare};
 use sn_messaging::Itinerary;
 use sn_routing::{
     Config as RoutingConfig, Error as RoutingError, EventStream, Routing as RoutingNode,
-    SectionChain,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -140,6 +140,7 @@ impl Network {
             .map(PublicKey::Bls)
     }
 
+    #[allow(unused)]
     pub async fn matching_section(&self, name: &XorName) -> Option<bls::PublicKey> {
         let (key, _) = self.routing.matching_section(name).await;
         key
@@ -176,7 +177,7 @@ impl Network {
         self.routing.our_prefix().await
     }
 
-    pub async fn section_chain(&self) -> SectionChain {
+    pub async fn section_chain(&self) -> SecuredLinkedList {
         self.routing.section_chain().await
     }
 
@@ -206,6 +207,7 @@ impl Network {
     }
 
     /// get our PKshare
+    #[allow(unused)]
     pub async fn our_public_key_share(&self) -> Result<PublicKey> {
         let index = self.our_index().await?;
         Ok(PublicKey::from(
@@ -214,6 +216,7 @@ impl Network {
     }
 
     /// BLS key index in routing for key shares
+    #[allow(unused)]
     pub async fn our_index(&self) -> Result<usize> {
         self.routing.our_index().await.map_err(Error::Routing)
     }

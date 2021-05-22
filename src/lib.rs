@@ -40,9 +40,8 @@ mod metadata;
 mod network;
 mod node;
 mod node_ops;
-mod section_funds;
+mod payments;
 mod to_db_key;
-mod transfers;
 
 /// Docs
 pub mod state_db;

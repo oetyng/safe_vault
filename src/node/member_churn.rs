@@ -8,68 +8,50 @@
 
 use super::role::{ElderRole, Role};
 use crate::{
-    capacity::{AdultsStorageInfo, Capacity, RateLimit},
+    capacity::{AdultsStorageInfo, Capacity, CapacityReader, CapacityWriter, RateLimit},
     metadata::{adult_reader::AdultReader, Metadata},
     node_ops::NodeDuty,
-    section_funds::{reward_wallets::RewardWallets, SectionFunds},
-    transfers::{
-        get_replicas::{replica_info, transfer_replicas},
-        Transfers,
-    },
+    payments::{reward_wallets::RewardWallets, Payments},
     Node, Result,
 };
 use log::info;
-use sn_data_types::{ActorHistory, NodeAge, PublicKey};
+use sn_data_types::{NodeAge, PublicKey};
+use sn_dbc::Mint;
 use sn_messaging::client::DataExchange;
 use sn_routing::XorName;
 use std::collections::BTreeMap;
 
 impl Node {
-    /// If we are an oldie we'll have a transfer instance,
-    /// This updates the replica info on it.
-    pub async fn update_replicas(&mut self) -> Result<()> {
-        let elder = self.role.as_elder_mut()?;
-        let info = replica_info(&self.network_api).await?;
-        elder.transfers.update_replica_info(info);
-        Ok(())
-    }
-
     /// Level up a newbie to an oldie on promotion
     pub async fn level_up(&mut self) -> Result<()> {
         self.used_space.reset().await?;
 
+        let adult_storage_info = AdultsStorageInfo::new();
+        let adult_reader = AdultReader::new(self.network_api.clone());
+        let capacity_reader = CapacityReader::new(adult_storage_info.clone(), adult_reader.clone());
+        let capacity_writer = CapacityWriter::new(adult_storage_info.clone(), adult_reader.clone());
+        let capacity = Capacity::new(capacity_reader.clone(), capacity_writer);
+
         //
         // start handling metadata
-        let adult_storage_info = AdultsStorageInfo::new();
-        let reader = AdultReader::new(self.network_api.clone());
-        let capacity = self.used_space.max_capacity().await;
-        let meta_data = Metadata::new(
-            &self.node_info.path(),
-            capacity,
-            adult_storage_info.clone(),
-            reader,
-        )
-        .await?;
+
+        let max_capacity = self.used_space.max_capacity().await;
+        let meta_data =
+            Metadata::new(&self.node_info.path(), max_capacity, capacity.clone()).await?;
 
         //
-        // start handling transfers
-        let rate_limit =
-            RateLimit::new(self.network_api.clone(), Capacity::new(adult_storage_info));
-        let user_wallets = BTreeMap::<PublicKey, ActorHistory>::new();
-        let replicas = transfer_replicas(&self.node_info, &self.network_api, user_wallets).await?;
-        let transfers = Transfers::new(replicas, rate_limit);
-
-        //
-        // start handling node rewards
-        let section_funds = SectionFunds::KeepingNodeWallets(RewardWallets::new(BTreeMap::<
-            XorName,
-            (NodeAge, PublicKey),
-        >::new()));
+        // start handling payments
+        let rate_limit = RateLimit::new(self.network_api.clone(), capacity_reader.clone());
+        let node_wallets = RewardWallets::new(BTreeMap::<XorName, (NodeAge, PublicKey)>::new());
+        let (mint, _dbc) = Mint::genesis(
+            self.network_api.our_public_key_set().await?,
+            crate::capacity::MAX_SUPPLY,
+        );
+        let payments = Payments::new(rate_limit, node_wallets, mint);
 
         self.role = Role::Elder(ElderRole {
             meta_data,
-            transfers,
-            section_funds,
+            payments,
             received_initial_sync: false,
         });
 
@@ -80,7 +62,6 @@ impl Node {
     pub async fn synch_state(
         &mut self,
         node_wallets: BTreeMap<XorName, (NodeAge, PublicKey)>,
-        user_wallets: BTreeMap<PublicKey, ActorHistory>,
         metadata: DataExchange,
     ) -> Result<NodeDuty> {
         let elder = self.role.as_elder_mut()?;
@@ -90,11 +71,9 @@ impl Node {
             return Ok(NodeDuty::NoOp);
         }
 
-        // --------- merge in provided user wallets ---------
-        elder.transfers.merge(user_wallets).await?;
-        // --------- merge in provided node reward stages ---------
+        // --------- merge in provided node wallets ---------
         for (key, (age, wallet)) in &node_wallets {
-            elder.section_funds.set_node_wallet(*key, *wallet, *age)
+            elder.payments.set_node_wallet(*key, *wallet, *age)
         }
         // --------- merge in provided metadata ---------
         elder.meta_data.update(metadata).await?;

@@ -18,33 +18,42 @@ use xor_name::XorName;
 /// their work in the network.
 #[derive(Clone)]
 pub struct RewardWallets {
-    node_rewards: DashMap<XorName, (NodeAge, PublicKey)>,
+    node_wallets: DashMap<XorName, (NodeAge, PublicKey)>,
 }
 
-// Node age
-type Age = u8;
-
 impl RewardWallets {
-    pub fn new(node_rewards: BTreeMap<XorName, (NodeAge, PublicKey)>) -> Self {
+    pub fn new(node_wallets: BTreeMap<XorName, (NodeAge, PublicKey)>) -> Self {
         Self {
-            node_rewards: node_rewards.into_iter().collect(),
+            node_wallets: node_wallets.into_iter().collect(),
         }
     }
 
     /// Returns the stage of a specific node.
     pub fn get(&self, node_name: &XorName) -> Option<(NodeAge, PublicKey)> {
-        Some(*self.node_rewards.get(node_name)?)
+        Some(*self.node_wallets.get(node_name)?)
     }
+
+    // /// Returns the name and age of the node for a specific wallet key.
+    // pub fn get_by_wallet(&self, wallet: PublicKey) -> Option<(XorName, NodeAge)> {
+    //     for item in &self.node_wallets {
+    //         let name = item.key();
+    //         let (age, key) = *item;
+    //         if key == wallet {
+    //             return Some((*name, age));
+    //         }
+    //     }
+    //     None
+    // }
 
     /// Returns the node ids of all nodes.
     #[allow(unused)]
     pub fn all_nodes(&self) -> Vec<XorName> {
-        self.node_rewards.iter().map(|r| *r.key()).collect()
+        self.node_wallets.iter().map(|r| *r.key()).collect()
     }
 
     ///
     pub fn node_wallets(&self) -> BTreeMap<XorName, (NodeAge, PublicKey)> {
-        self.node_rewards
+        self.node_wallets
             .clone()
             .into_read_only()
             .iter()
@@ -58,14 +67,14 @@ impl RewardWallets {
     pub fn keep_wallets_of(&self, prefix: Prefix) {
         // Removes keys that are no longer our section responsibility.
         let keys = self
-            .node_rewards
+            .node_wallets
             .iter()
             .map(|info| *info.key())
             .collect::<Vec<_>>();
 
         for key in keys {
             if !prefix.matches(&key) {
-                if let Some((name, _)) = self.node_rewards.remove(&key) {
+                if let Some((name, _)) = self.node_wallets.remove(&key) {
                     debug!("Removed node {} from rewards list.", name);
                 }
             }
@@ -74,13 +83,13 @@ impl RewardWallets {
 
     /// A new node registers a wallet id for future reward payout.
     /// ... or, an active node updates its wallet.
-    pub fn set_node_wallet(&self, node_name: XorName, age: Age, wallet: PublicKey) {
-        let _ = self.node_rewards.insert(node_name, (age, wallet));
+    pub fn set_node_wallet(&self, node_name: XorName, age: NodeAge, wallet: PublicKey) {
+        let _ = self.node_wallets.insert(node_name, (age, wallet));
     }
 
     /// When the section becomes aware that a node has left,
     /// its reward key is removed.
     pub fn remove_wallet(&self, node_name: XorName) {
-        let _ = self.node_rewards.remove(&node_name);
+        let _ = self.node_wallets.remove(&node_name);
     }
 }

@@ -6,15 +6,13 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use crate::{metadata::Metadata, section_funds::SectionFunds, transfers::Transfers};
+use crate::{metadata::Metadata, payments::Payments};
 
 pub(crate) struct ElderRole {
     // data operations
     pub meta_data: Metadata,
-    // transfers
-    pub transfers: Transfers,
-    // reward payouts
-    pub section_funds: SectionFunds,
+    // data paymnents
+    pub payments: Payments,
     // denotes if we received initial sync
     pub received_initial_sync: bool,
 }

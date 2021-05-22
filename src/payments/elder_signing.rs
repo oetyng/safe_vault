@@ -18,6 +18,7 @@ pub struct ElderSigning {
 }
 
 impl ElderSigning {
+    #[allow(unused)]
     pub async fn new(network: Network) -> Result<Self> {
         Ok(Self {
             id: OwnerType::Multi(network.our_public_key_set().await?),
@@ -25,6 +26,7 @@ impl ElderSigning {
         })
     }
 
+    #[allow(unused)]
     pub async fn our_index(&self) -> Result<usize> {
         self.network
             .our_index()
@@ -32,6 +34,7 @@ impl ElderSigning {
             .map_err(|_| Error::NoSectionPublicKeySet)
     }
 
+    #[allow(unused)]
     pub async fn public_key_set(&self) -> Result<PublicKeySet> {
         self.network
             .our_public_key_set()

@@ -37,6 +37,7 @@ impl Role {
         }
     }
 
+    #[allow(unused)]
     pub fn as_elder(&self) -> Result<&ElderRole> {
         match self {
             Self::Elder(elder) => Ok(elder),

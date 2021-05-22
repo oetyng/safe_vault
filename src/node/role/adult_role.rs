@@ -7,8 +7,8 @@
 // permissions and limitations relating to use of the SAFE Network Software.
 
 use crate::{
+    capacity::CHUNK_COPY_COUNT,
     chunks::Chunks,
-    metadata::CHUNK_COPY_COUNT,
     node_ops::{MsgType, NodeDuties, NodeDuty, OutgoingMsg},
 };
 use itertools::Itertools;

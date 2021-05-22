@@ -6,16 +6,10 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-#[cfg(feature = "simulated-payouts")]
-use sn_data_types::Transfer;
-use sn_data_types::{
-    ActorHistory, Blob, CreditAgreementProof, NodeAge, PublicKey, RewardAccumulation,
-    RewardProposal, SignedTransfer, TransferAgreementProof,
-};
-use sn_messaging::client::ClientMsg;
+use sn_data_types::{Blob, NodeAge, PublicKey};
 use sn_messaging::{
     client::{
-        BlobRead, BlobWrite, ClientSigned, DataCmd, DataExchange, DataQuery, ProcessMsg,
+        BlobRead, BlobWrite, ClientMsg, ClientSigned, DataCmd, DataExchange, DataQuery, ProcessMsg,
         ProcessingError, QueryResponse, SupportingInfo,
     },
     node::NodeMsg,
@@ -52,36 +46,9 @@ pub enum NodeDuty {
         msg_id: MessageId,
         origin: SrcLocation,
     },
-    PropagateTransfer {
-        proof: CreditAgreementProof,
-        msg_id: MessageId,
-        origin: SrcLocation,
-    },
     SetNodeWallet {
         wallet_id: PublicKey,
         node_id: XorName,
-    },
-    GetTransferReplicaEvents {
-        msg_id: MessageId,
-        origin: SrcLocation,
-    },
-    /// Validate a transfer from a client
-    ValidateClientTransfer {
-        signed_transfer: SignedTransfer,
-        msg_id: MessageId,
-        origin: SrcLocation,
-    },
-    /// Register a transfer from a client
-    RegisterTransfer {
-        proof: TransferAgreementProof,
-        msg_id: MessageId,
-        origin: SrcLocation,
-    },
-    /// TEMP: Simulate a transfer from a client
-    SimulatePayout {
-        transfer: Transfer,
-        msg_id: MessageId,
-        origin: SrcLocation,
     },
     ReadChunk {
         read: BlobRead,
@@ -108,31 +75,18 @@ pub enum NodeDuty {
         msg_id: MessageId,
         origin: SrcLocation,
     },
-    /// Get key transfers since specified version.
-    GetTransfersHistory {
-        /// The wallet key.
-        at: PublicKey,
-        /// The last version of transfers we know of.
-        since_version: usize,
-        msg_id: MessageId,
-        origin: SrcLocation,
-    },
-    /// Get Balance at a specific key
-    GetBalance {
-        at: PublicKey,
-        msg_id: MessageId,
-        origin: SrcLocation,
-    },
     GetStoreCost {
         /// Number of bytes to write.
         bytes: u64,
+        /// Whether for mutable data or not.
+        mutable: bool,
+        /// Name (i.e. hash) of the data
+        data_name: XorName,
+        /// Id of the incoming msg
         msg_id: MessageId,
+        /// Sender
         origin: SrcLocation,
     },
-    /// Proposal of payout of rewards.
-    ReceiveRewardProposal(RewardProposal),
-    /// Accumulation of payout of rewards.
-    ReceiveRewardAccumulation(RewardAccumulation),
     Genesis,
     EldersChanged {
         /// Our section prefix.
@@ -171,9 +125,7 @@ pub enum NodeDuty {
     /// Initiates the node with state from peers.
     SynchState {
         /// The registered wallet keys for nodes earning rewards
-        node_rewards: BTreeMap<XorName, (NodeAge, PublicKey)>,
-        /// The wallets of users on the network.
-        user_wallets: BTreeMap<PublicKey, ActorHistory>,
+        node_wallets: BTreeMap<XorName, (NodeAge, PublicKey)>,
         /// The metadata stored on Elders.
         metadata: DataExchange,
     },
@@ -252,15 +204,8 @@ impl Debug for NodeDuty {
         match self {
             Self::Genesis { .. } => write!(f, "Genesis"),
             Self::GetNodeWalletKey { .. } => write!(f, "GetNodeWalletKey"),
-            Self::PropagateTransfer { .. } => write!(f, "PropagateTransfer"),
             Self::SetNodeWallet { .. } => write!(f, "SetNodeWallet"),
-            Self::GetTransferReplicaEvents { .. } => write!(f, "GetTransferReplicaEvents"),
-            Self::ValidateClientTransfer { .. } => write!(f, "ValidateClientTransfer"),
-            Self::RegisterTransfer { .. } => write!(f, "RegisterTransfer"),
-            Self::GetBalance { .. } => write!(f, "GetBalance"),
             Self::GetStoreCost { .. } => write!(f, "GetStoreCost"),
-            Self::SimulatePayout { .. } => write!(f, "SimulatePayout"),
-            Self::GetTransfersHistory { .. } => write!(f, "GetTransfersHistory"),
             Self::ReadChunk { .. } => write!(f, "ReadChunk"),
             Self::WriteChunk { .. } => write!(f, "WriteChunk"),
             Self::ProcessRepublish { .. } => write!(f, "ProcessRepublish"),
@@ -273,8 +218,6 @@ impl Debug for NodeDuty {
                 "RecordAdultReadLiveness {{ correlation_id: {}, response: {:?}, src: {} }}",
                 correlation_id, response, src
             ),
-            Self::ReceiveRewardProposal { .. } => write!(f, "ReceiveRewardProposal"),
-            Self::ReceiveRewardAccumulation { .. } => write!(f, "ReceiveRewardAccumulation"),
             // ------
             Self::LevelDown => write!(f, "LevelDown"),
             Self::SynchState { .. } => write!(f, "SynchState"),

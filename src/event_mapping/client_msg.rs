@@ -14,7 +14,7 @@ use crate::{
 };
 use log::warn;
 use sn_messaging::{
-    client::{ClientMsg, Cmd, ProcessMsg, ProcessingError, Query, TransferCmd, TransferQuery},
+    client::{ClientMsg, Cmd, ProcessMsg, ProcessingError, Query},
     Aggregation, EndUser, MessageId, SrcLocation,
 };
 
@@ -77,54 +77,18 @@ fn map_client_process_msg(process_msg: ProcessMsg, origin: EndUser) -> NodeDuty 
             msg: process_msg.clone(),
             origin,
         },
-        ProcessMsg::Cmd {
-            cmd: Cmd::Transfer(TransferCmd::ValidateTransfer(signed_transfer)),
-            ..
-        } => NodeDuty::ValidateClientTransfer {
-            signed_transfer,
-            origin: SrcLocation::EndUser(origin),
-            msg_id,
-        },
-        // TODO: Map more transfer cmds
-        ProcessMsg::Cmd {
-            cmd: Cmd::Transfer(TransferCmd::SimulatePayout(transfer)),
-            ..
-        } => NodeDuty::SimulatePayout {
-            transfer,
-            origin: SrcLocation::EndUser(origin),
-            msg_id,
-        },
-        ProcessMsg::Cmd {
-            cmd: Cmd::Transfer(TransferCmd::RegisterTransfer(proof)),
-            ..
-        } => NodeDuty::RegisterTransfer {
-            proof,
-            origin: SrcLocation::EndUser(origin),
-            msg_id,
-        },
-        // TODO: Map more transfer queries
         ProcessMsg::Query {
-            query: Query::Transfer(TransferQuery::GetHistory { at, since_version }),
-            ..
-        } => NodeDuty::GetTransfersHistory {
-            at,
-            since_version,
-            origin: SrcLocation::EndUser(origin),
-            msg_id,
-        },
-        ProcessMsg::Query {
-            query: Query::Transfer(TransferQuery::GetBalance(at)),
-            ..
-        } => NodeDuty::GetBalance {
-            at,
-            origin: SrcLocation::EndUser(origin),
-            msg_id,
-        },
-        ProcessMsg::Query {
-            query: Query::Transfer(TransferQuery::GetStoreCost { bytes, .. }),
+            query:
+                Query::GetStoreCost {
+                    bytes,
+                    mutable,
+                    data_name,
+                },
             ..
         } => NodeDuty::GetStoreCost {
             bytes,
+            mutable,
+            data_name,
             origin: SrcLocation::EndUser(origin),
             msg_id,
         },

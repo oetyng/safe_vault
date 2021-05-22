@@ -88,18 +88,9 @@ pub enum Error {
     /// Not Section PublicKey.
     #[error("Not section public key returned from routing for xorname {0}")]
     NoSectionPublicKeyKnown(XorName),
-    /// Unable to parse reward proposal.
-    #[error("Cannot parse reward proposal at this stage")]
-    InvalidRewardStage,
-    /// Node not found for rewarding
-    #[error("Node not found for rewards")]
-    NodeNotFoundForReward,
     /// Key, Value pair not found in `ChunkStore`.
     #[error("No such chunk: {0:?}")]
     NoSuchChunk(DataAddress),
-    /// Unable to process fund churn message.
-    #[error("Cannot process fund churn message")]
-    NotChurningFunds,
     /// Creating temp directory failed.
     #[error("Could not create temp store: {0}")]
     TempDirCreationFailed(String),
@@ -136,27 +127,18 @@ pub enum Error {
     /// NetworkData error.
     #[error("Network data error:: {0}")]
     NetworkData(#[from] sn_data_types::Error),
-    /// sn_transfers error.
-    #[error("Transfer data error:: {0}")]
-    Transfer(#[from] sn_transfers::Error),
+    /// sn_dbc error.
+    #[error("Dbc error:: {0}")]
+    Dbc(#[from] sn_dbc::Error),
     /// Routing error.
     #[error("Routing error:: {0}")]
     Routing(#[from] sn_routing::Error),
-    /// Transfer has already been registered
-    #[error("Transfer has already been registered")]
-    TransferAlreadyRegistered,
-    /// Transfer message is invalid.
-    #[error("Signed transfer for Dot: '{0:?}' is not valid. Debit or credit are missing")]
-    InvalidSignedTransfer(crdts::Dot<PublicKey>),
-    /// Transfer message is invalid.
-    #[error("Propagated Credit Agreement proof is not valid. Proof received: {0:?}")]
-    InvalidPropagatedTransfer(sn_data_types::CreditAgreementProof),
     /// Message is invalid.
     #[error("Message with id: '{0:?}' is invalid. {1}")]
     InvalidMessage(MessageId, String),
     /// Data owner provided is invalid.
     #[error("Provided PublicKey is not a valid owner. Provided PublicKey: {0}")]
-    InvalidOwners(PublicKey),
+    InvalidOwner(PublicKey),
     /// Operation is invalid, eg signing validation
     #[error("Invalid operation: {0}")]
     InvalidOperation(String),
@@ -178,9 +160,7 @@ pub(crate) fn convert_to_error_message(error: Error) -> sn_messaging::client::Er
     match error {
         Error::InvalidOperation(msg) => ErrorMessage::InvalidOperation(msg),
         Error::InvalidMessage(_, msg) => ErrorMessage::InvalidOperation(msg),
-        Error::InvalidOwners(key) => ErrorMessage::InvalidOwners(key),
-        Error::InvalidSignedTransfer(_) => ErrorMessage::InvalidSignature,
-        Error::TransferAlreadyRegistered => ErrorMessage::TransactionIdExists,
+        Error::InvalidOwner(key) => ErrorMessage::InvalidOwners(key),
         Error::NoSuchChunk(address) => ErrorMessage::DataNotFound(address),
         Error::NotEnoughSpace => ErrorMessage::NotEnoughSpace,
         Error::TempDirCreationFailed(_) => ErrorMessage::FailedToWriteFile,

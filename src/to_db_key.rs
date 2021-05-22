@@ -9,8 +9,7 @@
 use crate::{utils, Error, Result};
 use serde::{de::DeserializeOwned, Serialize};
 use sn_data_types::{
-    register::Address, BlobAddress, CreditId, DebitId, Keypair, MapAddress, PublicKey,
-    SequenceAddress,
+    register::Address, BlobAddress, Keypair, MapAddress, PublicKey, SequenceAddress,
 };
 use xor_name::XorName;
 
@@ -36,8 +35,6 @@ impl ToDbKey for BlobAddress {}
 impl ToDbKey for MapAddress {}
 impl ToDbKey for PublicKey {}
 impl ToDbKey for XorName {}
-impl ToDbKey for CreditId {}
-impl ToDbKey for DebitId {}
 
 #[cfg(test)]
 mod test {

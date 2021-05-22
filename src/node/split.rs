@@ -6,30 +6,19 @@
 // KIND, either express or implied. Please review the Licences for the specific language governing
 // permissions and limitations relating to use of the SAFE Network Software.
 
-use crate::{
-    node::interaction::push_state,
-    node_ops::NodeDuties,
-    section_funds::{self, SectionFunds},
-    transfers::get_replicas::replica_info,
-    Error, Node, Result,
-};
+use crate::{node::interaction::push_state, node_ops::NodeDuties, Error, Node, Result};
 use log::debug;
-use section_funds::{
-    elder_signing::ElderSigning,
-    reward_process::{OurSection, RewardProcess},
-    reward_wallets::RewardWallets,
-};
-use sn_data_types::{NodeAge, PublicKey, Token};
+use sn_data_types::PublicKey;
 use sn_messaging::MessageId;
 use sn_routing::{Prefix, XorName};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 impl Node {
     /// Called on split reported from routing layer.
     pub(crate) async fn begin_split_as_newbie(
         &mut self,
         our_key: PublicKey,
-        our_prefix: Prefix,
+        _our_prefix: Prefix,
     ) -> Result<()> {
         let section_key = self.network_api.section_public_key().await?;
         if our_key != section_key {
@@ -39,23 +28,7 @@ impl Node {
             )));
         }
 
-        self.level_up().await?;
-
-        let section = OurSection {
-            our_prefix,
-            our_key,
-        };
-
-        let elder = self.role.as_elder_mut()?;
-
-        let process =
-            RewardProcess::new(section, ElderSigning::new(self.network_api.clone()).await?);
-
-        let wallets = RewardWallets::new(BTreeMap::<XorName, (NodeAge, PublicKey)>::new());
-
-        elder.section_funds = SectionFunds::Churning { process, wallets };
-
-        Ok(())
+        self.level_up().await
     }
 
     /// Called on split reported from routing layer.
@@ -69,17 +42,8 @@ impl Node {
     ) -> Result<NodeDuties> {
         let elder = self.role.as_elder_mut()?;
 
-        // get payments before updating replica info
-        let payments = elder.transfers.payments().await?;
-
-        let info = replica_info(&self.network_api).await?;
-        elder.transfers.update_replica_info(info);
-
-        let wallets = match &mut elder.section_funds {
-            SectionFunds::KeepingNodeWallets(wallets) | SectionFunds::Churning { wallets, .. } => {
-                wallets.clone()
-            }
-        };
+        // let info = replica_info(&self.network_api).await?;
+        // elder.transfers.update_replica_info(info);
 
         let sibling_prefix = our_prefix.sibling();
 
@@ -94,37 +58,6 @@ impl Node {
 
         let mut ops = vec![];
 
-        if payments > Token::zero() {
-            let section_managed = elder.transfers.managed_amount().await?;
-
-            // payments made since last churn
-            debug!("Payments: {}", payments);
-            // total amount in wallets
-            debug!("Managed amount: {}", section_managed);
-
-            // generate reward and minting proposal
-            let mut process = RewardProcess::new(
-                OurSection {
-                    our_prefix,
-                    our_key,
-                },
-                ElderSigning::new(self.network_api.clone()).await?,
-            );
-
-            ops.push(
-                process
-                    .reward_and_mint(payments, section_managed, wallets.node_wallets())
-                    .await?,
-            );
-
-            elder.section_funds = SectionFunds::Churning {
-                process,
-                wallets: wallets.clone(),
-            };
-        } else {
-            debug!("Not paying out rewards, as no payments have been received since last split.");
-        }
-
         // replicate state to our new elders
         let msg_id = MessageId::combine(&[our_prefix.name().0, XorName::from(our_key).0]);
         ops.push(push_state(elder, our_prefix, msg_id, our_new_elders).await?);
@@ -133,17 +66,14 @@ impl Node {
         let msg_id = MessageId::combine(&[sibling_prefix.name().0, XorName::from(sibling_key).0]);
         ops.push(push_state(elder, sibling_prefix, msg_id, their_new_elders).await?);
 
-        // drop metadata state
+        // drop metadata
         elder
             .meta_data
             .retain_members_only(self.network_api.our_adults().await)
             .await?;
 
-        // drop transfers state
-        elder.transfers.keep_keys_of(our_prefix).await?;
-
-        // drop reward wallets state
-        elder.section_funds.keep_wallets_of(our_prefix);
+        // drop node wallets
+        elder.payments.keep_wallets_of(our_prefix);
 
         Ok(ops)
     }
